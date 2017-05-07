@@ -193,6 +193,12 @@ Models
 * The new :class:`~django.db.models.functions.StrIndex` database function
   finds the starting index of a string inside another string.
 
+Aggregations
+~~~~~~~~~~~~
+
+* Built in aggregates now accept a `filter` parameter that can be used to
+  exclude elements from an aggregate based on a condition.
+
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
 
