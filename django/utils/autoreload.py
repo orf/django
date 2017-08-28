@@ -5,9 +5,10 @@ import queue
 import signal
 import sys
 import time
+import queue
+import multiprocessing
 from collections import namedtuple
 from functools import lru_cache
-from multiprocessing import Event, Process, Queue, set_start_method
 from pathlib import Path
 import traceback
 
@@ -25,6 +26,11 @@ try:
     import pywatchman
 except ImportError:
     pywatchman = None
+
+try:
+    import watchdog
+except ImportError:
+    watchdog = None
 
 # This import does nothing, but it's necessary to avoid some race conditions
 # in the threading module. See http://code.djangoproject.com/ticket/2330 .
@@ -166,9 +172,9 @@ def wait_for_app_ready(conditional_thread=None):
 
 class Reloader:
     def __init__(self):
-        self.watch_queue = Queue()
-        self.change_queue = Queue()
-        self.started_event = Event()
+        self.watch_queue = multiprocessing.Queue()
+        self.change_queue = multiprocessing.Queue()
+        self.started_event = multiprocessing.Event()
         self.child_process = None
         self.watched_files = set()
         self.watched_directories = {}
@@ -210,7 +216,7 @@ class Reloader:
         while True:
             self.flush_change_queue()
 
-            self.child_process = Process(target=execute_child, args=(sys.argv,), kwargs=kwargs)
+            self.child_process = multiprocessing.Process(target=execute_child, args=(sys.argv,), kwargs=kwargs)
             self.child_process.start()
             self.child_process.join()
 
@@ -254,11 +260,18 @@ class Reloader:
         while True:
             self.watch_for_changes()
 
+    def stop(self):
+        pass
+
     def yield_changes(self):
         raise NotImplementedError()
 
     @classmethod
     def is_available(cls):
+        raise NotImplementedError()
+
+    @property
+    def name(self):
         raise NotImplementedError()
 
 
@@ -280,6 +293,8 @@ def python_reloader(main_func, args, kwargs):
         except KeyboardInterrupt:
             passclass StatReloader(Reloader):
     SLEEP_DURATION = 1
+
+    name = 'stat'
 
     def yield_changes(self):
         file_times = {}
@@ -316,12 +331,9 @@ def python_reloader(main_func, args, kwargs):
         return True
 
 
-class WatchmanReloader(Reloader):
+class DirectoryReloader(Reloader):
     def __init__(self):
         super().__init__()
-        self.client = pywatchman.client()
-        self.client._connect()
-        self.client.setTimeout(10)
         self.watched_roots = set()
 
     def watch(self, path, glob=None):
@@ -334,8 +346,23 @@ class WatchmanReloader(Reloader):
             removed_roots = self.watched_roots - roots
             self.unwatch_roots(removed_roots)
             self.watch_roots(new_roots)
-
             self.watched_roots = roots
+
+    def watch_roots(self, roots):
+        raise NotImplementedError()
+
+    def unwatch_roots(self, roots):
+        raise NotImplementedError()
+
+
+class WatchmanReloader(DirectoryReloader):
+    name = 'stat'
+
+    def __init__(self):
+        super().__init__()
+        self.client = pywatchman.client()
+        self.client._connect()
+        self.client.setTimeout(10)
 
     @property
     def subscription_name(self):
@@ -343,11 +370,19 @@ class WatchmanReloader(Reloader):
 
     def watch_roots(self, roots):
         for root in roots:
-            self.client.query('subscribe', root, self.subscription_name, {'fields': ['name'], "dedup_results": True})
+            self.client.query('subscribe', root, self.subscription_name, {'fields': ['name'],
+                                                                          'expression': ['allof',
+                                                                                         ['type', 'f'],
+                                                                                         ['not', ['suffix', 'pyc']]],
+                                                                          'dedup_results': True})
 
     def unwatch_roots(self, roots):
         for root in roots:
             self.client.query('unsubscribe', root, self.subscription_name)
+
+    def stop(self):
+        super().stop()
+        self.unwatch_roots(self.watched_roots)
 
     def yield_changes(self):
         while True:
@@ -358,7 +393,8 @@ class WatchmanReloader(Reloader):
 
             if not result['is_fresh_instance']:
                 root = Path(result['root'])
-                yield root / result['files'][-1]
+                for path in result['files']:
+                    yield root / path
 
     @classmethod
     def is_available(cls):
@@ -373,14 +409,77 @@ class WatchmanReloader(Reloader):
                 return False
 
 
+class WatchdogReloader(DirectoryReloader):
+    def __init__(self):
+        super().__init__()
+        self._event_queue = queue.Queue()
+        self._root_watches = {}
+
+        from watchdog.observers import Observer
+        from watchdog.events import FileSystemEventHandler
+
+        def _check_modification(path):
+            if path in self.watched_files:
+                self._event_queue.put(path)
+
+            for directory in self.watched_directories:
+                if directory in path.parents:
+                    self._event_queue.put(path)
+                    break
+
+        class _CustomHandler(FileSystemEventHandler):
+
+            def on_created(self, event):
+                _check_modification(Path(event.src_path))
+
+            def on_modified(self, event):
+                _check_modification(Path(event.src_path))
+
+            def on_moved(self, event):
+                _check_modification(Path(event.src_path))
+                _check_modification(Path(event.dest_path))
+
+            def on_deleted(self, event):
+                _check_modification(Path(event.src_path))
+
+        self.observer = Observer()
+        self.handler = _CustomHandler()
+        self.observer.start()
+
+    @property
+    def name(self):
+        reloader_name = self.observer.__class__.__name__.lower()
+        if reloader_name.endswith('observer'):
+            reloader_name = reloader_name[:-8]
+        return reloader_name
+
+    def watch_roots(self, roots):
+        for root in roots:
+            watch = self.observer.schedule(self.handler, str(root), recursive=True)
+            self._root_watches[root] = watch
+
+    def unwatch_roots(self, roots):
+        for root in roots:
+            watch = self._root_watches.pop(root)
+            self.observer.unschedule(watch)
+
+    def yield_changes(self):
+        while True:
+            yield self._event_queue.get()
+
+    @classmethod
+    def is_available(cls):
+        return watchdog is not None
+
+
 def run_with_reloader(main_func, *args, **kwargs):
     with contextlib.suppress(KeyboardInterrupt):
         if os.environ.get(DJANGO_AUTORELOAD_ENV) == '1':
             main_func(*args, **kwargs)
         else:
-
             WATCHERS = (
                 WatchmanReloader,
+                WatchdogReloader,
                 StatReloader,
             )
 
@@ -392,5 +491,10 @@ def run_with_reloader(main_func, *args, **kwargs):
 
             reloader = available_watchers[0]
 
-            set_start_method('spawn')
-            reloader().run()
+            multiprocessing.set_start_method('spawn')
+            reloader = reloader()
+            print('Reloading using: {0}'.format(reloader.name))
+            try:
+                reloader.run()
+            finally:
+                reloader.stop()
