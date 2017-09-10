@@ -47,6 +47,8 @@ class DatabaseFeatures(BaseDatabaseFeatures):
             SET V_I = P_I;
         END;
     """
+    # MySQL has TRADITIONAL instead of TEXT, but we alias TRADITIONAL to TEXT for consistency
+    supported_explain_formats = {'JSON', 'TEXT', 'TRADITIONAL'}
 
     @cached_property
     def _mysql_storage_engine(self):

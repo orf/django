@@ -50,6 +50,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     $$ LANGUAGE plpgsql;"""
     supports_over_clause = True
     supports_aggregate_filter_clause = True
+    supported_explain_formats = {'JSON', 'TEXT', 'XML', 'YAML'}
 
     @cached_property
     def is_postgresql_9_5(self):

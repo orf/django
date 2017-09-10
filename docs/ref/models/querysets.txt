@@ -2464,6 +2464,52 @@ Class method that returns an instance of :class:`~django.db.models.Manager`
 with a copy of the ``QuerySet``’s methods. See
 :ref:`create-manager-with-queryset-methods` for more details.
 
+
+``explain()``
+~~~~~~~~~~~~~
+
+.. versionadded: 2.1
+
+.. method:: explain(format=None, **options)
+
+Returns the execution plan of the current queryset as a string. This details
+how the database would execute the given query, highlighting any indexes or
+joins used. For example, when using PostgreSQL::
+
+    >>> print(Blog.objects.filter(title="My Blog").explain())
+    Seq Scan on blog  (cost=0.00..35.50 rows=10 width=12)
+      Filter: (title = 'My Blog'::bpchar)
+
+The ``format`` parameter can output the explanation in different formats,
+depending on the database in use. If this parameter is not passed then the
+default database format is used, typically text-based. Currently PostgreSQL
+supports TEXT, JSON, YAML and XML, while MySQL supports TEXT and JSON.
+
+Some databases, e.g PostgreSQL, accept flags that can return more
+information about the query. These flags can be passed as keyword arguments to
+the function. For example, when using PostgreSQL::
+
+    >>> print(Blog.objects.filter(title="My Blog").explain(verbose=True))
+    Seq Scan on public.blog  (cost=0.00..35.50 rows=10 width=12) (actual time=0.004..0.004 rows=10 loops=1)
+      Output: id, title
+      Filter: (blog.title = 'My Blog'::bpchar)
+    Planning time: 0.064 ms
+    Execution time: 0.058 ms
+
+.. warning::
+
+    On some supported databases these flags can cause the query to be executed
+    which may have adverse effects on your database.
+
+    For example, use of the ``ANALYZE`` flag provided by PostgreSQL could result
+    in changes to data if there are triggers or a function is called, even for
+    a ``SELECT`` query.
+
+.. warning::
+
+    This method is only useful to aid debugging poorly performing
+    queries. The output differs between database vendors and versions.
+
 .. _field-lookups:
 
 ``Field`` lookups

@@ -5,7 +5,7 @@ from collections import OrderedDict
 from operator import attrgetter
 
 from django.core.exceptions import EmptyResultSet, FieldError
-from django.db import DEFAULT_DB_ALIAS, connection
+from django.db import DEFAULT_DB_ALIAS, connection, transaction
 from django.db.models import Count, F, Q
 from django.db.models.sql.constants import LOUTER
 from django.db.models.sql.where import NothingNode, WhereNode
@@ -82,6 +82,86 @@ class Queries1Tests(TestCase):
 
         Cover.objects.create(title="first", item=i4)
         Cover.objects.create(title="second", item=cls.i2)
+
+    def test_explain(self):
+        querysets = [
+            Tag.objects.filter(name='test').all(),
+            Tag.objects.filter(name='test').select_related("parent"),
+            Tag.objects.filter(name='test').prefetch_related("children"),
+            Tag.objects.filter(name='test').annotate(Count('children')),
+            Tag.objects.filter(name='test').values_list('name'),
+            Tag.objects.order_by().union(Tag.objects.order_by().filter(name='test')),
+            Tag.objects.all().select_for_update().filter(name='test'),
+        ]
+        supported_formats = connection.features.supported_explain_formats
+        all_formats = (None,) + tuple(supported_formats) + tuple(f.lower() for f in supported_formats)
+        for idx, queryset in enumerate(querysets):
+            for format in all_formats:
+                with self.subTest(format=format, queryset=idx):
+                    result = queryset.explain(format=format)
+                    self.assertIsInstance(result, str)
+                    self.assertTrue(result)
+
+    def test_explain_unknown_format(self):
+        with self.assertRaises(ValueError) as exc:
+            Tag.objects.all().explain(format='does not exist')
+
+        self.assertIn('DOES NOT EXIST is not a recognised format', str(exc.exception))
+
+        if connection.features.supported_explain_formats:
+            expected_message = 'Allowed formats: {0}'.format(', '.join(connection.features.supported_explain_formats))
+            self.assertIn(expected_message, str(exc.exception))
+
+    @unittest.skipUnless(connection.vendor == 'postgresql', "PostgreSQL specific")
+    def test_postgres_explain_options(self):
+        qs = Tag.objects.filter(name='test').all()
+
+        test_options = [
+            {'COSTS': False, 'BUFFERS': True, 'ANALYZE': True},
+            {'costs': False, 'buffers': True, 'analyze': True},
+            {'verbose': True, 'timing': True, 'analyze': True},
+            {'verbose': False, 'timing': False, 'analyze': True},
+        ]
+
+        if connection.pg_version >= 100000:
+            test_options.append({'summary': True})
+
+        for options in test_options:
+            with self.subTest(**options), transaction.atomic():
+                with CaptureQueriesContext(connection) as captured_queries:
+                    qs.explain(format='text', **options)
+
+                self.assertEqual(len(captured_queries), 1)
+                for name, value in options.items():
+                    name = name.upper()
+                    option = '{0} {1}'.format(name, 'true' if value else 'false')
+                    self.assertIn(option, captured_queries[0]['sql'])
+
+    @unittest.skipUnless(connection.vendor == 'mysql', "Mysql specific")
+    def test_mysql_explain_text_to_traditional(self):
+        qs = Tag.objects.filter(name='test').all()
+
+        with CaptureQueriesContext(connection) as captured_queries:
+            qs.explain(format='text')
+
+        self.assertEqual(len(captured_queries), 1)
+        self.assertIn('FORMAT=TRADITIONAL', captured_queries[0]['sql'])
+
+    @unittest.skipUnless(connection.vendor == 'mysql' and connection.mysql_version < (5, 7), "Mysql < 5.7 specific")
+    def test_mysql_explain_extended(self):
+        qs = Tag.objects.filter(name='test').all()
+
+        with CaptureQueriesContext(connection) as captured_queries:
+            qs.explain(format='json')
+
+        self.assertEqual(len(captured_queries), 1)
+        self.assertNotIn('EXTENDED', captured_queries[0]['sql'])
+
+        with CaptureQueriesContext(connection) as captured_queries:
+            qs.explain(format='text')
+
+        self.assertEqual(len(captured_queries), 1)
+        self.assertNotIn('EXTENDED', captured_queries[0]['sql'])
 
     def test_subquery_condition(self):
         qs1 = Tag.objects.filter(pk__lte=0)

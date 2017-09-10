@@ -201,6 +201,8 @@ Models
 
 * A ``BinaryField`` may now be set to ``editable=True`` if you wish to include
   it in model forms.
+* The new :meth:`.QuerySet.explain` method allows displaying the execution
+  plan of a queryset for debugging purposes.
 
 * A number of new text database functions are added:
   :class:`~django.db.models.functions.Chr`,

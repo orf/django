@@ -54,6 +54,7 @@ END;
     cast_data_types = {
         'TextField': cast_char_field_without_max_length,
     }
+    explain_prefix = 'EXPLAIN PLAN'
 
     def cache_key_culling_sql(self):
         return """
