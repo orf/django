@@ -856,14 +856,6 @@ needed. You don't need to restart the server for code changes to take effect.
 However, some actions like adding files don't trigger a restart, so you'll
 have to restart the server in these cases.
 
-If you are using Linux and install `pyinotify`_, kernel signals will be used to
-autoreload the server (rather than polling file modification timestamps each
-second). This offers better scaling to large projects, reduction in response
-time to code modification, more robust change detection, and battery usage
-reduction.
-
-.. _pyinotify: https://pypi.org/project/pyinotify/
-
 When you start the server, and each time you change Python code while the
 server is running, the system check framework will check your entire Django
 project for some common errors (see the :djadmin:`check` command). If any

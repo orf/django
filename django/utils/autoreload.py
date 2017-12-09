@@ -1,224 +1,174 @@
-# Autoreloading launcher.
-# Borrowed from Peter Hunt and the CherryPy project (https://cherrypy.org/).
-# Some taken from Ian Bicking's Paste (http://pythonpaste.org/).
-#
-# Portions copyright (c) 2004, CherryPy Team (team@cherrypy.org)
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without modification,
-# are permitted provided that the following conditions are met:
-#
-#     * Redistributions of source code must retain the above copyright notice,
-#       this list of conditions and the following disclaimer.
-#     * Redistributions in binary form must reproduce the above copyright notice,
-#       this list of conditions and the following disclaimer in the documentation
-#       and/or other materials provided with the distribution.
-#     * Neither the name of the CherryPy Team nor the names of its contributors
-#       may be used to endorse or promote products derived from this software
-#       without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import contextlib
+import functools
 
 import os
-import signal
+import pathlib
 import subprocess
 import sys
 import time
+from pathlib import Path
 import traceback
 
-import _thread
+import threading
 
 from django.apps import apps
-from django.conf import settings
-from django.core.signals import request_finished
+from django.dispatch import Signal
 
-# This import does nothing, but it's necessary to avoid some race conditions
-# in the threading module. See https://code.djangoproject.com/ticket/2330 .
-try:
-    import threading  # NOQA
-except ImportError:
-    pass
+import signal
+
+autoreload_started = Signal()
+file_changed = Signal(providing_args=['path', 'kind'])
+
+DJANGO_AUTORELOAD_ENV = 'RUN_MAIN'
+
+# If an error is raised while importing a file, it is not placed
+# in sys.modules. This means any future modifications are not
+# caught. We keep a list of these file paths to continue to
+# watch them in the future.
+_error_files = []
+_exception = None
 
 try:
     import termios
 except ImportError:
     termios = None
 
-USE_INOTIFY = False
-try:
-    # Test whether inotify is enabled and likely to work
-    import pyinotify
 
-    fd = pyinotify.INotifyWrapper.create().inotify_init()
-    if fd >= 0:
-        USE_INOTIFY = True
-        os.close(fd)
-except ImportError:
-    pass
-
-RUN_RELOADER = True
-
-FILE_MODIFIED = 1
-I18N_MODIFIED = 2
-
-_mtimes = {}
-_win = (sys.platform == "win32")
-
-_exception = None
-_error_files = []
-_cached_modules = set()
-_cached_filenames = []
+def ensure_echo_on():
+    if termios:
+        fd = sys.stdin
+        if fd.isatty():
+            attr_list = termios.tcgetattr(fd)
+            if not attr_list[3] & termios.ECHO:
+                attr_list[3] |= termios.ECHO
+                if hasattr(signal, 'SIGTTOU'):
+                    old_handler = signal.signal(signal.SIGTTOU, signal.SIG_IGN)
+                else:
+                    old_handler = None
+                termios.tcsetattr(fd, termios.TCSANOW, attr_list)
+                if old_handler is not None:
+                    signal.signal(signal.SIGTTOU, old_handler)
 
 
-def gen_filenames(only_new=False):
-    """
-    Return a list of filenames referenced in sys.modules and translation files.
-    """
-    # N.B. ``list(...)`` is needed, because this runs in parallel with
-    # application code which might be mutating ``sys.modules``, and this will
-    # fail with RuntimeError: cannot mutate dictionary while iterating
-    global _cached_modules, _cached_filenames
-    module_values = set(sys.modules.values())
-    _cached_filenames = clean_files(_cached_filenames)
-    if _cached_modules == module_values:
-        # No changes in module list, short-circuit the function
-        if only_new:
-            return []
-        else:
-            return _cached_filenames + clean_files(_error_files)
+def iter_all_python_module_files():
+    sys_file_paths = [
+        getattr(module, '__file__', None)
+        for module in sys.modules.values()
+    ]
 
-    new_modules = module_values - _cached_modules
-    new_filenames = clean_files(
-        [filename.__file__ for filename in new_modules
-         if hasattr(filename, '__file__')])
-
-    if not _cached_filenames and settings.USE_I18N:
-        # Add the names of the .mo files that can be generated
-        # by compilemessages management command to the list of files watched.
-        basedirs = [os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                                 'conf', 'locale'),
-                    'locale']
-        for app_config in reversed(list(apps.get_app_configs())):
-            basedirs.append(os.path.join(app_config.path, 'locale'))
-        basedirs.extend(settings.LOCALE_PATHS)
-        basedirs = [os.path.abspath(basedir) for basedir in basedirs
-                    if os.path.isdir(basedir)]
-        for basedir in basedirs:
-            for dirpath, dirnames, locale_filenames in os.walk(basedir):
-                for filename in locale_filenames:
-                    if filename.endswith('.mo'):
-                        new_filenames.append(os.path.join(dirpath, filename))
-
-    _cached_modules = _cached_modules.union(new_modules)
-    _cached_filenames += new_filenames
-    if only_new:
-        return new_filenames + clean_files(_error_files)
-    else:
-        return _cached_filenames + clean_files(_error_files)
-
-
-def clean_files(filelist):
-    filenames = []
-    for filename in filelist:
+    for filename in sys_file_paths + _error_files:
         if not filename:
             continue
-        if filename.endswith(".pyc") or filename.endswith(".pyo"):
-            filename = filename[:-1]
-        if filename.endswith("$py.class"):
-            filename = filename[:-9] + ".py"
-        if os.path.exists(filename):
-            filenames.append(filename)
-    return filenames
+
+        path = pathlib.Path(filename)
+
+        if path.suffix in {'.pyc', '.pyo'}:
+            yield path.with_suffix('.py')
+
+        yield path.absolute()
 
 
-def reset_translations():
-    import gettext
-    from django.utils.translation import trans_real
-    gettext._translations = {}
-    trans_real._translations = {}
-    trans_real._default = None
-    trans_real._active = threading.local()
+class BaseReloader:
+    def __init__(self):
+        self.extra_files = set()
+        self.extra_directories = set()
+
+    def watch(self, path, glob):
+        path = Path(path)
+
+        if glob:
+            self.extra_directories.add((path, glob))
+        else:
+            self.extra_files.add(path.absolute())
+
+    def watched_files(self):
+        yield from iter_all_python_module_files()
+        yield from self.extra_files
+
+        for directory, pattern in self.extra_directories:
+            yield from directory.glob(pattern)
+
+    def run(self):
+        while not apps.ready:
+            time.sleep(0.1)
+
+        autoreload_started.send(sender=self)
+        self.run_loop()
+
+    def run_loop(self):
+        pass
+
+    def get_child_arguments(self):
+        """
+        Returns the executable. This contains a workaround for windows
+        if the executable is incorrectly reported to not have the .exe
+        extension which can cause bugs on reloading.
+        """
+        import django.__main__
+
+        args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]
+        if sys.argv[0] == django.__main__.__file__:
+            # The server was started with `python -m django runserver`.
+            args += ['-m', 'django']
+            args += sys.argv[1:]
+        else:
+            args += sys.argv
+
+        return args
+
+    def restart_with_reloader(self):
+        new_environ = os.environ.copy()
+        new_environ[DJANGO_AUTORELOAD_ENV] = '1'
+        args = self.get_child_arguments()
+
+        while True:
+            exit_code = subprocess.call(args, env=new_environ, close_fds=False)
+
+            if exit_code != 3:
+                return exit_code
+
+    def trigger_reload(self, filename, kind='changed'):
+        print('{0} {1}, reloading'.format(filename, kind))
+        sys.exit(3)
 
 
-def inotify_code_changed():
-    """
-    Check for changed code using inotify. After being called
-    it blocks until a change event has been fired.
-    """
-    class EventHandler(pyinotify.ProcessEvent):
-        modified_code = None
+class StatReloader(BaseReloader):
+    def run_loop(self):
+        file_times = {}
 
-        def process_default(self, event):
-            if event.path.endswith('.mo'):
-                EventHandler.modified_code = I18N_MODIFIED
-            else:
-                EventHandler.modified_code = FILE_MODIFIED
+        while True:
+            for path, mtime in self.snapshot():
+                previous_time = file_times.get(path)
 
-    wm = pyinotify.WatchManager()
-    notifier = pyinotify.Notifier(wm, EventHandler())
+                if previous_time is None:
+                    file_times[path] = mtime
 
-    def update_watch(sender=None, **kwargs):
-        if sender and getattr(sender, 'handles_files', False):
-            # No need to update watches when request serves files.
-            # (sender is supposed to be a django.core.handlers.BaseHandler subclass)
-            return
-        mask = (
-            pyinotify.IN_MODIFY |
-            pyinotify.IN_DELETE |
-            pyinotify.IN_ATTRIB |
-            pyinotify.IN_MOVED_FROM |
-            pyinotify.IN_MOVED_TO |
-            pyinotify.IN_CREATE |
-            pyinotify.IN_DELETE_SELF |
-            pyinotify.IN_MOVE_SELF
-        )
-        for path in gen_filenames(only_new=True):
-            wm.add_watch(path, mask)
+                elif previous_time != mtime:
+                    results = file_changed.send(sender=self, file_path=path)
+                    if not any(res[1] for res in results):
+                        self.trigger_reload(path)
+                    file_times[path] = mtime
 
-    # New modules may get imported when a request is processed.
-    request_finished.connect(update_watch)
+            time.sleep(1)
 
-    # Block until an event happens.
-    update_watch()
-    notifier.check_events(timeout=None)
-    notifier.read_events()
-    notifier.process_events()
-    notifier.stop()
-
-    # If we are here the code must have changed.
-    return EventHandler.modified_code
-
-
-def code_changed():
-    global _mtimes, _win
-    for filename in gen_filenames():
-        stat = os.stat(filename)
-        mtime = stat.st_mtime
-        if _win:
-            mtime -= stat.st_ctime
-        if filename not in _mtimes:
-            _mtimes[filename] = mtime
-            continue
-        if mtime != _mtimes[filename]:
-            _mtimes = {}
+    def snapshot(self):
+        for file in self.watched_files():
             try:
-                del _error_files[_error_files.index(filename)]
-            except ValueError:
-                pass
-            return I18N_MODIFIED if filename.endswith('.mo') else FILE_MODIFIED
-    return False
+                mtime = file.stat().st_mtime
+            except OSError:
+                continue
+
+            yield file, mtime
+
+
+def raise_last_exception():
+    global _exception
+    if _exception is not None:
+        raise _exception[0](_exception[1]).with_traceback(_exception[2])
 
 
 def check_errors(fn):
+    @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         global _exception
         try:
@@ -242,82 +192,18 @@ def check_errors(fn):
     return wrapper
 
 
-def raise_last_exception():
-    global _exception
-    if _exception is not None:
-        raise _exception[1]
+def run_with_reloader(main_func, *args, **kwargs):
+    import signal
+    signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
 
+    with contextlib.suppress(KeyboardInterrupt):
+        if os.environ.get(DJANGO_AUTORELOAD_ENV) == '1':
+            main_func = check_errors(main_func)
+            thread = threading.Thread(target=main_func, args=args, kwargs=kwargs)
+            thread.setDaemon(True)
+            thread.start()
 
-def ensure_echo_on():
-    if termios:
-        fd = sys.stdin
-        if fd.isatty():
-            attr_list = termios.tcgetattr(fd)
-            if not attr_list[3] & termios.ECHO:
-                attr_list[3] |= termios.ECHO
-                if hasattr(signal, 'SIGTTOU'):
-                    old_handler = signal.signal(signal.SIGTTOU, signal.SIG_IGN)
-                else:
-                    old_handler = None
-                termios.tcsetattr(fd, termios.TCSANOW, attr_list)
-                if old_handler is not None:
-                    signal.signal(signal.SIGTTOU, old_handler)
-
-
-def reloader_thread():
-    ensure_echo_on()
-    if USE_INOTIFY:
-        fn = inotify_code_changed
-    else:
-        fn = code_changed
-    while RUN_RELOADER:
-        change = fn()
-        if change == FILE_MODIFIED:
-            sys.exit(3)  # force reload
-        elif change == I18N_MODIFIED:
-            reset_translations()
-        time.sleep(1)
-
-
-def restart_with_reloader():
-    import django.__main__
-    while True:
-        args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]
-        if sys.argv[0] == django.__main__.__file__:
-            # The server was started with `python -m django runserver`.
-            args += ['-m', 'django']
-            args += sys.argv[1:]
+            StatReloader().run()
         else:
-            args += sys.argv
-        new_environ = {**os.environ, 'RUN_MAIN': 'true'}
-        exit_code = subprocess.call(args, env=new_environ)
-        if exit_code != 3:
-            return exit_code
-
-
-def python_reloader(main_func, args, kwargs):
-    if os.environ.get("RUN_MAIN") == "true":
-        _thread.start_new_thread(main_func, args, kwargs)
-        try:
-            reloader_thread()
-        except KeyboardInterrupt:
-            pass
-    else:
-        try:
-            exit_code = restart_with_reloader()
-            if exit_code < 0:
-                os.kill(os.getpid(), -exit_code)
-            else:
-                sys.exit(exit_code)
-        except KeyboardInterrupt:
-            pass
-
-
-def main(main_func, args=None, kwargs=None):
-    if args is None:
-        args = ()
-    if kwargs is None:
-        kwargs = {}
-
-    wrapped_main_func = check_errors(main_func)
-    python_reloader(wrapped_main_func, args, kwargs)
+            exit_code = StatReloader().restart_with_reloader()
+            sys.exit(exit_code)
