@@ -3,14 +3,13 @@ Internationalization support.
 """
 import re
 import threading
-from pathlib import Path
 from contextlib import ContextDecorator
+from pathlib import Path
 
 from django.apps import apps
 from django.dispatch import receiver
 from django.utils.autoreload import autoreload_started, file_changed
 from django.utils.functional import lazy
-
 
 __all__ = [
     'activate', 'deactivate', 'override', 'deactivate_all',

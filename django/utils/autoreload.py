@@ -1,20 +1,17 @@
 import contextlib
 import functools
-
 import os
 import pathlib
+import signal
 import subprocess
 import sys
-import time
-from pathlib import Path
-import traceback
-
 import threading
+import time
+import traceback
+from pathlib import Path
 
 from django.apps import apps
 from django.dispatch import Signal
-
-import signal
 
 autoreload_started = Signal()
 file_changed = Signal(providing_args=['path', 'kind'])
@@ -32,6 +29,12 @@ try:
     import termios
 except ImportError:
     termios = None
+
+
+try:
+    import pywatchman
+except ImportError:
+    pywatchman = None
 
 
 def ensure_echo_on():
@@ -65,28 +68,32 @@ def iter_all_python_module_files():
         if path.suffix in {'.pyc', '.pyo'}:
             yield path.with_suffix('.py')
 
-        yield path.absolute()
+        yield path.resolve().absolute()
 
 
 class BaseReloader:
     def __init__(self):
         self.extra_files = set()
-        self.extra_directories = set()
+        self.extra_globs = set()
 
     def watch(self, path, glob):
         path = Path(path)
 
+        if not path.is_absolute():
+            raise RuntimeError('{0} must be absolute'.format(path))
+
         if glob:
-            self.extra_directories.add((path, glob))
+            self.extra_globs.add((path, glob))
         else:
             self.extra_files.add(path.absolute())
 
-    def watched_files(self):
+    def watched_files(self, include_globs=True):
         yield from iter_all_python_module_files()
         yield from self.extra_files
 
-        for directory, pattern in self.extra_directories:
-            yield from directory.glob(pattern)
+        if include_globs:
+            for directory, pattern in self.extra_globs:
+                yield from directory.glob(pattern)
 
     def run(self):
         while not apps.ready:
@@ -117,6 +124,7 @@ class BaseReloader:
         return args
 
     def restart_with_reloader(self):
+        print('Watching for file changes with {0}'.format(self.__class__.__name__))
         new_environ = os.environ.copy()
         new_environ[DJANGO_AUTORELOAD_ENV] = '1'
         args = self.get_child_arguments()
@@ -131,6 +139,14 @@ class BaseReloader:
         print('{0} {1}, reloading'.format(filename, kind))
         sys.exit(3)
 
+    def is_available(self):
+        raise NotImplementedError()
+
+    def notify_file_changed(self, path):
+        results = file_changed.send(sender=self, file_path=path)
+        if not any(res[1] for res in results):
+            self.trigger_reload(path)
+
 
 class StatReloader(BaseReloader):
     def run_loop(self):
@@ -144,9 +160,7 @@ class StatReloader(BaseReloader):
                     file_times[path] = mtime
 
                 elif previous_time != mtime:
-                    results = file_changed.send(sender=self, file_path=path)
-                    if not any(res[1] for res in results):
-                        self.trigger_reload(path)
+                    self.notify_file_changed(path)
                     file_times[path] = mtime
 
             time.sleep(1)
@@ -159,6 +173,91 @@ class StatReloader(BaseReloader):
                 continue
 
             yield file, mtime
+
+    def is_available(self):
+        return True
+
+
+class WatchmanReloader(BaseReloader):
+    @property
+    def subscription_name(self):
+        return 'django:{0}'.format(os.getpid())
+
+    def watch_roots(self, client):
+        watched_files = list(self.watched_files(include_globs=False))
+        roots = self.find_common_roots([p.parent for p in watched_files])
+
+        for root in roots:
+            children = [str(f.relative_to(root)) for f in watched_files if root in f.parents]
+            watch_expression = {
+                'fields': ['name'],
+                'dedup_results': True,
+                'empty_on_fresh_instance': True,
+                'expression': ['allof', ['type', 'f'], ['name', children, 'wholename']]
+            }
+
+            client.query('subscribe', str(root), self.subscription_name, watch_expression)
+
+        for directory, glob in self.extra_globs:
+            # Watchman cannot watch roots that do not exist.
+            if not directory.exists():
+                continue
+
+            glob_expression = {
+                'fields': ['name'],
+                'dedup_results': True,
+                'empty_on_fresh_instance': True,
+                'expression': ['allof', ['type', 'f'], ['match', glob, 'wholename']]
+            }
+
+            client.query('subscribe', str(directory), self.subscription_name, glob_expression)
+
+    def run_loop(self):
+        with pywatchman.client() as client:
+            self.watch_roots(client)
+            while True:
+                try:
+                    result = client.receive()
+                except pywatchman.SocketTimeout as e:
+                    continue
+
+                root = Path(result['root'])
+                for path in result['files']:
+                    self.notify_file_changed(root / path)
+
+    def find_common_roots(self, paths):
+        """Out of some paths it finds the common roots that need monitoring."""
+        paths = [x.parts for x in paths]
+        root = {}
+        for chunks in sorted(paths, key=len, reverse=True):
+            node = root
+            for chunk in chunks:
+                node = node.setdefault(chunk, {})
+            node.clear()
+
+        rv = set()
+
+        def _walk(node, path):
+            for prefix, child in node.items():
+                _walk(child, path + (prefix,))
+            if not node:
+                subpath = '/'.join(path[1:])
+                rv.add(path[0] + subpath)
+
+        _walk(root, ())
+
+        return {Path(item) for item in rv}
+
+    def is_available(self):
+        if pywatchman is None:
+            return False
+
+        try:
+            with pywatchman.client() as c:
+                c.setTimeout(1)
+                return 'version' in c.capabilityCheck()
+        except Exception:
+            return False
 
 
 def raise_last_exception():
@@ -192,6 +291,12 @@ def check_errors(fn):
     return wrapper
 
 
+def get_reloader():
+    for reloader in (WatchmanReloader(), StatReloader()):
+        if reloader.is_available():
+            return reloader
+
+
 def run_with_reloader(main_func, *args, **kwargs):
     import signal
     signal.signal(signal.SIGTERM, lambda *args: sys.exit(0))
@@ -203,7 +308,7 @@ def run_with_reloader(main_func, *args, **kwargs):
             thread.setDaemon(True)
             thread.start()
 
-            StatReloader().run()
+            get_reloader().run()
         else:
-            exit_code = StatReloader().restart_with_reloader()
+            exit_code = get_reloader().restart_with_reloader()
             sys.exit(exit_code)
