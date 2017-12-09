@@ -125,8 +125,7 @@ class BaseReloader:
 
     def restart_with_reloader(self):
         print('Watching for file changes with {0}'.format(self.__class__.__name__))
-        new_environ = os.environ.copy()
-        new_environ[DJANGO_AUTORELOAD_ENV] = '1'
+        new_environ = {**os.environ, DJANGO_AUTORELOAD_ENV: '1'}
         args = self.get_child_arguments()
 
         while True:
@@ -139,7 +138,8 @@ class BaseReloader:
         print('{0} {1}, reloading'.format(filename, kind))
         sys.exit(3)
 
-    def is_available(self):
+    @classmethod
+    def is_available(cls):
         raise NotImplementedError()
 
     def notify_file_changed(self, path):
@@ -174,7 +174,8 @@ class StatReloader(BaseReloader):
 
             yield file, mtime
 
-    def is_available(self):
+    @classmethod
+    def is_available(cls):
         return True
 
 
@@ -248,7 +249,8 @@ class WatchmanReloader(BaseReloader):
 
         return {Path(item) for item in rv}
 
-    def is_available(self):
+    @classmethod
+    def is_available(cls):
         if pywatchman is None:
             return False
 
@@ -291,10 +293,11 @@ def check_errors(fn):
     return wrapper
 
 
-def get_reloader():
-    for reloader in (WatchmanReloader(), StatReloader()):
-        if reloader.is_available():
-            return reloader
+def get_reloader(use_watchman=False):
+    if use_watchman and WatchmanReloader.is_available():
+        return WatchmanReloader()
+
+    return StatReloader()
 
 
 def run_with_reloader(main_func, *args, **kwargs):
@@ -303,12 +306,14 @@ def run_with_reloader(main_func, *args, **kwargs):
 
     with contextlib.suppress(KeyboardInterrupt):
         if os.environ.get(DJANGO_AUTORELOAD_ENV) == '1':
+            ensure_echo_on()
+
             main_func = check_errors(main_func)
             thread = threading.Thread(target=main_func, args=args, kwargs=kwargs)
             thread.setDaemon(True)
             thread.start()
 
-            get_reloader().run()
+            get_reloader(use_watchman=kwargs['use_watchman']).run()
         else:
-            exit_code = get_reloader().restart_with_reloader()
+            exit_code = get_reloader(use_watchman=kwargs['use_watchman']).restart_with_reloader()
             sys.exit(exit_code)

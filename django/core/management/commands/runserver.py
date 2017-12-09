@@ -50,6 +50,10 @@ class Command(BaseCommand):
             '--noreload', action='store_false', dest='use_reloader',
             help='Tells Django to NOT use the auto-reloader.',
         )
+        parser.add_argument(
+            '--watchman', action='store_true', dest='use_watchman',
+            help='Use Watchman if available'
+        )
 
     def execute(self, *args, **options):
         if options['no_color']:
