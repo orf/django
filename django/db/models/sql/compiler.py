@@ -1115,14 +1115,12 @@ class SQLCompiler:
             # ID to identify it.
             statement_id = get_random_string(6)
             self.query.explain_options['statement_id'] = statement_id
-
-        result = list(self.execute_sql())
-
-        if self.connection.vendor == 'oracle':
+            self.execute_sql(result_type=NO_RESULTS)
             yield 'To retrieve the execution plan execute the following query:'
             yield "SELECT PLAN_TABLE_OUTPUT FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, '%s'));" % statement_id
             return
 
+        result = list(self.execute_sql())
         # Some backends return 1 item tuples with strings, others return
         # tuples with integers and strings. Flatten them out into strings.
         for row in result[0]:
