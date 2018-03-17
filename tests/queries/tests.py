@@ -112,6 +112,20 @@ class Queries1Tests(TestCase):
             expected_message = 'Allowed formats: {0}'.format(', '.join(connection.features.supported_explain_formats))
             self.assertIn(expected_message, str(exc.exception))
 
+    @unittest.skipUnless(connection.vendor == 'oracle', "Oracle specific")
+    def test_oracle_explain_output(self):
+        output = list(Tag.objects.all().explain())
+        self.assertEqual(len(output), 2)
+        self.assertEqual(output[0], 'To retrieve the execution plan execute the following query:')
+        self.assertIn('SELECT PLAN_TABLE_OUTPUT FROM TABLE(DBMS_XPLAN.DISPLAY', output[1])
+
+    @unittest.skipUnless(connection.vendor == 'oracle', "Oracle specific")
+    def test_oracle_retrieve_sql(self):
+        sql_output = list(Tag.objects.all().explain())[1]
+        with connection.cursor() as cursor:
+            cursor.execute(sql_output)
+            cursor.fetchall()
+
     @unittest.skipUnless(connection.vendor == 'postgresql', "PostgreSQL specific")
     def test_postgres_explain_options(self):
         qs = Tag.objects.filter(name='test').all()

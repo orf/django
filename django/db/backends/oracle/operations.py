@@ -577,3 +577,8 @@ END;
         if fields:
             return self.connection.features.max_query_params // len(fields)
         return len(objs)
+
+    def explain_query_prefix(self, format=None, **options):
+        prefix = super().explain_query_prefix(format, **options)
+        explain_uuid = options['uuid']
+        return "{0} SET STATEMENT_ID = '{1}' FOR".format(prefix, explain_uuid)

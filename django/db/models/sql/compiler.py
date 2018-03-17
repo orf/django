@@ -1,6 +1,7 @@
 import collections
 import functools
 import re
+import uuid
 import warnings
 from itertools import chain
 
@@ -1108,7 +1109,20 @@ class SQLCompiler:
         return 'EXISTS (%s)' % sql, params
 
     def explain_query(self):
+        if self.connection.vendor == 'oracle':
+            # Explaining the execution of a query in Oracle involves inserting the execution plan into
+            # a temporary table, then retrieving it via a second query. We need to give each plan a unique
+            # ID to identify it.
+            plan_uuid = str(uuid.uuid4())
+            self.query.explain_options['uuid'] = plan_uuid
+
         result = list(self.execute_sql())
+
+        if self.connection.vendor == 'oracle':
+            yield 'To retrieve the execution plan execute the following query:'
+            yield "SELECT PLAN_TABLE_OUTPUT FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, '%s'));" % plan_uuid
+            return
+
         # Some backends return 1 item tuples with strings, others return
         # tuples with integers and strings. Flatten them out into strings.
         for row in result[0]:
