@@ -114,14 +114,14 @@ class Queries1Tests(TestCase):
 
     @unittest.skipUnless(connection.vendor == 'oracle', "Oracle specific")
     def test_oracle_explain_output(self):
-        output = list(Tag.objects.all().explain())
+        output = Tag.objects.all().explain().split('\n')
         self.assertEqual(len(output), 2)
         self.assertEqual(output[0], 'To retrieve the execution plan execute the following query:')
         self.assertIn('SELECT PLAN_TABLE_OUTPUT FROM TABLE(DBMS_XPLAN.DISPLAY', output[1])
 
     @unittest.skipUnless(connection.vendor == 'oracle', "Oracle specific")
     def test_oracle_retrieve_sql(self):
-        sql_output = list(Tag.objects.all().explain())[1]
+        sql_output = Tag.objects.all().explain().split('\n')[1]
         with connection.cursor() as cursor:
             cursor.execute(sql_output)
             cursor.fetchall()
