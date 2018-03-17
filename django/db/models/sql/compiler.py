@@ -1,7 +1,6 @@
 import collections
 import functools
 import re
-import uuid
 import warnings
 from itertools import chain
 
@@ -15,6 +14,7 @@ from django.db.models.sql.constants import (
 from django.db.models.sql.query import Query, get_order_dir
 from django.db.transaction import TransactionManagementError
 from django.db.utils import DatabaseError, NotSupportedError
+from django.utils.crypto import get_random_string
 from django.utils.deprecation import RemovedInDjango30Warning
 from django.utils.inspect import func_supports_parameter
 
@@ -1113,14 +1113,14 @@ class SQLCompiler:
             # Explaining the execution of a query in Oracle involves inserting the execution plan into
             # a temporary table, then retrieving it via a second query. We need to give each plan a unique
             # ID to identify it.
-            plan_uuid = str(uuid.uuid4())
-            self.query.explain_options['uuid'] = plan_uuid
+            statement_id = get_random_string(6)
+            self.query.explain_options['statement_id'] = statement_id
 
         result = list(self.execute_sql())
 
         if self.connection.vendor == 'oracle':
             yield 'To retrieve the execution plan execute the following query:'
-            yield "SELECT PLAN_TABLE_OUTPUT FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, '%s'));" % plan_uuid
+            yield "SELECT PLAN_TABLE_OUTPUT FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, '%s'));" % statement_id
             return
 
         # Some backends return 1 item tuples with strings, others return
