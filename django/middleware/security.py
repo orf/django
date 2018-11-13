@@ -1,8 +1,27 @@
 import re
+from functools import lru_cache
 
 from django.conf import settings
 from django.http import HttpResponsePermanentRedirect
 from django.utils.deprecation import MiddlewareMixin
+
+
+@lru_cache(maxsize=32)
+def create_csp_policy(base):
+    base = dict(base)
+    report_uri = base.pop('report-uri')
+
+    policy = {}
+    for key, parts in base.items():
+        policy[key] = ' '.join(p if p is not False else "'none'" for p in parts)
+
+    if report_uri:
+        policy['report-uri'] = report_uri
+
+    return '; '.join(
+        "{0} {1}".format(key, value)
+        for key, value in policy.items()
+    )
 
 
 class SecurityMiddleware(MiddlewareMixin):
@@ -15,6 +34,8 @@ class SecurityMiddleware(MiddlewareMixin):
         self.redirect = settings.SECURE_SSL_REDIRECT
         self.redirect_host = settings.SECURE_SSL_HOST
         self.redirect_exempt = [re.compile(r) for r in settings.SECURE_REDIRECT_EXEMPT]
+        self.csp_policy = settings.CSP_POLICY
+        self.csp_report_policy = settings.CSP_REPORT_ONLY_POLICY
         self.get_response = get_response
 
     def process_request(self, request):
@@ -42,5 +63,13 @@ class SecurityMiddleware(MiddlewareMixin):
 
         if self.xss_filter:
             response.setdefault('X-XSS-Protection', '1; mode=block')
+
+        if self.csp_policy:
+            policy = create_csp_policy(tuple(self.csp_policy.items()))
+            response.setdefault('Content-Security-Policy', policy)
+
+        if self.csp_report_policy:
+            report_policy = create_csp_policy(tuple(self.csp_report_policy.items()))
+            response.setdefault('Content-Security-Policy-Report-Only', report_policy)
 
         return response
