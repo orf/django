@@ -65,4 +65,8 @@ from .base import (                                                     # NOQA i
 from .library import Library                                            # NOQA isort:skip
 
 
+# Private, required to configure the autoreloader
+from . import autoreload                                                # NOQA isort:skip
+
+
 __all__ += ('Template', 'Context', 'RequestContext')
