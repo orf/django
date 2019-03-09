@@ -46,6 +46,12 @@ except ImportError:
     pywatchman = None
 
 
+try:
+    import watchdog
+except ImportError:
+    watchdog = None
+
+
 def check_errors(fn):
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
@@ -358,6 +364,29 @@ class StatReloader(BaseReloader):
         return True
 
 
+class WatchdogReloader(BaseReloader):
+    def update_watches(self, observer):
+        from watchdog.events import PatternMatchingEventHandler
+
+        for path, globs in self.directory_globs.items():
+            if path.exists():
+                observer.schedule(PatternMatchingEventHandler(globs),
+                                  str(path), recursive=True)
+
+    def tick(self):
+        from watchdog.observers import Observer
+        observer = Observer()
+        self.update_watches(observer)
+        observer.start()
+
+        while True:
+            yield
+
+    @classmethod
+    def check_availability(cls):
+        return watchdog is not None
+
+
 class WatchmanUnavailable(RuntimeError):
     pass
 
@@ -544,6 +573,7 @@ class WatchmanReloader(BaseReloader):
 
 def get_reloader():
     """Return the most suitable reloader for this environment."""
+    return WatchdogReloader()
     try:
         WatchmanReloader.check_availability()
     except WatchmanUnavailable:
