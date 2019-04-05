@@ -345,13 +345,17 @@ class StatReloader(BaseReloader):
         return updated_times
 
     def snapshot_files(self):
+        logger.debug('File snapshot ------------------------------------')
         for file in self.watched_files():
             try:
                 mtime = file.stat().st_mtime
-            except OSError:
+            except OSError as e:
+                logger.debug('File %s threw error %s', file, e)
                 # This is thrown when the file does not exist.
                 continue
+            logger.debug('File %s mtime = %s', file, mtime)
             yield file, mtime
+        logger.debug('End file snapshot --------------------------------')
 
     @classmethod
     def check_availability(cls):
