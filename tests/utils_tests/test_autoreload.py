@@ -495,14 +495,29 @@ class IntegrationTests:
 class BaseReloaderTests(ReloaderTests):
     RELOADER_CLS = autoreload.BaseReloader
 
+    def test_unresolvable_file(self):
+        path = Path('unresolvable_file_name.py')
+        with mock.patch.object(Path, 'absolute', side_effect=FileNotFoundError):
+            self.reloader.watch_file(path)
+        watched_files = list(self.reloader.watched_files())
+        self.assertNotIn('unresolvable_file_name.py', [p.name for p in watched_files])
+
     def test_watch_without_absolute(self):
-        with self.assertRaisesMessage(ValueError, 'test.py must be absolute.'):
-            self.reloader.watch_file('test.py')
+        path = Path('test.py')
+        self.reloader.watch_file(path)
+        watched_files = list(self.reloader.watched_files())
+        self.assertIn(path.absolute(), watched_files)
 
     def test_watch_with_single_file(self):
         self.reloader.watch_file(self.existing_file)
         watched_files = list(self.reloader.watched_files())
         self.assertIn(self.existing_file, watched_files)
+
+    def test_watch_dir_with_unresolvable_path(self):
+        path = Path('unresolvable_directory')
+        with mock.patch.object(Path, 'absolute', side_effect=FileNotFoundError):
+            self.reloader.watch_file(path)
+        self.assertNotIn('unresolvable_directory', [p.name for p in self.reloader.extra_files])
 
     def test_watch_with_glob(self):
         self.reloader.watch_dir(self.tempdir, '*.py')

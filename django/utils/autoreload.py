@@ -231,15 +231,25 @@ class BaseReloader:
 
     def watch_dir(self, path, glob):
         path = Path(path)
-        if not path.is_absolute():
-            raise ValueError('%s must be absolute.' % path)
+
+        try:
+            path = path.absolute()
+        except FileNotFoundError:
+            logger.debug('Skipping watching directory %s as it cannot be resolved.', path, exc_info=True)
+            return
+
         logger.debug('Watching dir %s with glob %s.', path, glob)
         self.directory_globs[path].add(glob)
 
     def watch_file(self, path):
         path = Path(path)
-        if not path.is_absolute():
-            raise ValueError('%s must be absolute.' % path)
+
+        try:
+            path = path.absolute()
+        except FileNotFoundError:
+            logger.debug('Skipping watching file %s as it cannot be resolved.', path, exc_info=True)
+            return
+
         logger.debug('Watching file %s.', path)
         self.extra_files.add(path)
 

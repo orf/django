@@ -18,3 +18,6 @@ Bugfixes
   :class:`~django.contrib.postgres.fields.DateRangeField` or
   :class:`~django.contrib.postgres.fields.DateTimeRangeField`, if the right
   hand side of an expression is the same type (:ticket:`30621`).
+
+* Fixed a regression in Django 2.2 where an intermittent FileNotFoundError
+  would prevent the autoreloader from functioning (:ticket:`30647`).
