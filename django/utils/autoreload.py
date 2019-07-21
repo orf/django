@@ -135,7 +135,9 @@ def iter_modules_and_files(modules, extra_files):
         if not filename:
             continue
         path = pathlib.Path(filename)
-        if not path.exists():
+        try:
+            resolved_path = path.resolve(strict=True).absolute()
+        except FileNotFoundError:
             # The module could have been removed, don't fail loudly if this
             # is the case.
             continue
@@ -143,7 +145,7 @@ def iter_modules_and_files(modules, extra_files):
             # Some network filesystems intermittently return null bytes in file paths.
             logger.debug('Path "%s" threw a ValueError while resolving.', path)
             continue
-        results.add(path.resolve().absolute())
+        results.add(resolved_path)
     return frozenset(results)
 
 
