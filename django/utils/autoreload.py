@@ -139,6 +139,10 @@ def iter_modules_and_files(modules, extra_files):
             # The module could have been removed, don't fail loudly if this
             # is the case.
             continue
+        except ValueError:
+            # Some network filesystems intermittently return null bytes in file paths.
+            logger.debug('Path "%s" threw a ValueError while resolving.', path)
+            continue
         results.add(path.resolve().absolute())
     return frozenset(results)
 

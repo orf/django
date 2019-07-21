@@ -18,3 +18,7 @@ Bugfixes
   :class:`~django.contrib.postgres.fields.DateRangeField` or
   :class:`~django.contrib.postgres.fields.DateTimeRangeField`, if the right
   hand side of an expression is the same type (:ticket:`30621`).
+
+* Fixed a regression in Django 2.2 where the autoreloader would crash
+  if the filesystem returned a path including embedded null bytes
+  (:ticket:`30506`).

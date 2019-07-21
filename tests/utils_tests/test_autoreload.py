@@ -138,6 +138,14 @@ class TestIterModulesAndFiles(SimpleTestCase):
         fake_main = types.ModuleType('__main__')
         self.assertEqual(autoreload.iter_modules_and_files((fake_main,), frozenset()), frozenset())
 
+    def test_file_name_with_embedded_null_bytes(self):
+        file_name = 'embedded_null_byte\x00.py'
+        self.assertEqual(autoreload.iter_modules_and_files(tuple(), frozenset((file_name,))), frozenset())
+
+    def test_path_with_embedded_null_bytes(self):
+        file_name = 'di\x00rectory/embedded_null_byte.py'
+        self.assertEqual(autoreload.iter_modules_and_files(tuple(), frozenset((file_name,))), frozenset())
+
 
 class TestCommonRoots(SimpleTestCase):
     def test_common_roots(self):
