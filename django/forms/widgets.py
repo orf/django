@@ -1,7 +1,7 @@
 """
 HTML Widget classes
 """
-
+import collections
 import copy
 import datetime
 import warnings
@@ -556,7 +556,14 @@ class ChoiceWidget(Widget):
         # choices can be any iterable, but we may need to render this widget
         # multiple times. Thus, collapse it into a list so it can be consumed
         # more than once.
-        self.choices = list(choices)
+        if isinstance(choices, collections.abc.Mapping):
+            # Convert potentially nested dictionaries to a flat list of tuples structure.
+            self.choices = [
+                (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
+                for k, v in choices.items()
+            ]
+        else:
+            self.choices = list(choices)
 
     def __deepcopy__(self, memo):
         obj = copy.copy(self)
@@ -588,10 +595,12 @@ class ChoiceWidget(Widget):
                 option_value = ''
 
             subgroup = []
-            if isinstance(option_label, (list, tuple)):
+            if isinstance(option_label, (list, tuple, dict)):
                 group_name = option_value
                 subindex = 0
                 choices = option_label
+                if isinstance(option_label, dict):
+                    choices = option_label.items()
             else:
                 group_name = None
                 subindex = None

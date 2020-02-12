@@ -63,6 +63,28 @@ class ChoiceFieldTest(FormFieldAssertionsMixin, SimpleTestCase):
         f = ChoiceField(choices=choices)
         self.assertEqual('J', f.clean('J'))
 
+    def test_choicefield_mapping(self):
+        f = ChoiceField(choices={'J': 'John', 'P': 'Paul'})
+        self.assertEqual('J', f.clean('J'))
+
+    def test_choicefiled_grouped_mapping(self):
+        f = ChoiceField(choices={
+            'Numbers': (('1', 'One'), ('2', 'Two')),
+            'Letters': (('3', 'A'), ('4', 'B'))
+        })
+        for i in ('1', '2', '3', '4'):
+            with self.subTest(i):
+                self.assertEqual(i, f.clean(i))
+
+    def test_choicefiled_grouped_mapping_inner_dict(self):
+        f = ChoiceField(choices={
+            'Numbers': {'1': 'One', '2': 'Two'},
+            'Letters': {'3': 'A', '4': 'B'}
+        })
+        for i in ('1', '2', '3', '4'):
+            with self.subTest(i):
+                self.assertEqual(i, f.clean(i))
+
     def test_choicefield_callable_may_evaluate_to_different_values(self):
         choices = []
 

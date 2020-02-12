@@ -1,7 +1,7 @@
 """
 Field classes.
 """
-
+import collections
 import copy
 import datetime
 import json
@@ -793,6 +793,12 @@ class ChoiceField(Field):
         # it will be consumed more than once.
         if callable(value):
             value = CallableChoiceIterator(value)
+        elif isinstance(value, collections.abc.Mapping):
+            # Convert potentially nested dictionaries to a flat list of tuples structure.
+            value = [
+                (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
+                for k, v in value.items()
+            ]
         else:
             value = list(value)
 
@@ -820,7 +826,7 @@ class ChoiceField(Field):
         """Check to see if the provided value is a valid choice."""
         text_value = str(value)
         for k, v in self.choices:
-            if isinstance(v, (list, tuple)):
+            if isinstance(v, (list, tuple, collections.abc.Mapping)):
                 # This is an optgroup, so look inside the group for options
                 for k2, v2 in v:
                     if value == k2 or text_value == str(k2):

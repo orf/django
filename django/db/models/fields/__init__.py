@@ -149,8 +149,6 @@ class Field(RegisterLookupMixin):
         self.unique_for_date = unique_for_date
         self.unique_for_month = unique_for_month
         self.unique_for_year = unique_for_year
-        if isinstance(choices, collections.abc.Iterator):
-            choices = list(choices)
         self.choices = choices
         self.help_text = help_text
         self.db_index = db_index
@@ -174,6 +172,22 @@ class Field(RegisterLookupMixin):
         messages.update(error_messages or {})
         self._error_messages = error_messages  # Store for deconstruction later
         self.error_messages = messages
+
+    def _get_choices(self):
+        return self._choices
+
+    def _set_choices(self, value):
+        if isinstance(value, collections.abc.Mapping):
+            # Convert potentially nested dictionaries to a flat list of tuples structure.
+            value = [
+                (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
+                for k, v in value.items()
+            ]
+        elif isinstance(value, collections.abc.Iterator):
+            value = list(value)
+        self._choices = value
+
+    choices = property(_get_choices, _set_choices)
 
     def __str__(self):
         """
@@ -248,7 +262,7 @@ class Field(RegisterLookupMixin):
         if not is_iterable(self.choices) or isinstance(self.choices, str):
             return [
                 checks.Error(
-                    "'choices' must be an iterable (e.g., a list or tuple).",
+                    "'choices' must be a dictionary or an iterable (e.g., a list or tuple).",
                     obj=self,
                     id='fields.E004',
                 )
@@ -298,8 +312,8 @@ class Field(RegisterLookupMixin):
 
         return [
             checks.Error(
-                "'choices' must be an iterable containing "
-                "(actual value, human readable name) tuples.",
+                "'choices' must be an iterable of tuples or a dictionary "
+                "containing (actual value, human readable name) tuples.",
                 obj=self,
                 id='fields.E005',
             )
@@ -621,9 +635,10 @@ class Field(RegisterLookupMixin):
 
         if self.choices is not None and value not in self.empty_values:
             for option_key, option_value in self.choices:
-                if isinstance(option_value, (list, tuple)):
-                    # This is an optgroup, so look inside the group for
-                    # options.
+                if isinstance(option_value, (list, tuple, collections.abc.Mapping)):
+                    # This is an optgroup, so look inside the group for options.
+                    if isinstance(option_value, collections.abc.Mapping):
+                        option_value = option_value.items()
                     for optgroup_key, optgroup_value in option_value:
                         if value == optgroup_key:
                             return
@@ -882,6 +897,8 @@ class Field(RegisterLookupMixin):
         for choice, value in self.choices:
             if isinstance(value, (list, tuple)):
                 flat.extend(value)
+            elif isinstance(value, collections.abc.Mapping):
+                flat.extend(value.items())
             else:
                 flat.append((choice, value))
         return flat

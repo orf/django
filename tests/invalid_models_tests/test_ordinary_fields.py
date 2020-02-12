@@ -174,7 +174,7 @@ class CharFieldTests(SimpleTestCase):
         field = Model._meta.get_field('field')
         self.assertEqual(field.check(), [
             Error(
-                "'choices' must be an iterable (e.g., a list or tuple).",
+                "'choices' must be a dictionary or an iterable (e.g., a list or tuple).",
                 obj=field,
                 id='fields.E004',
             ),
@@ -188,8 +188,8 @@ class CharFieldTests(SimpleTestCase):
         field = Model._meta.get_field('field')
         self.assertEqual(field.check(), [
             Error(
-                "'choices' must be an iterable containing (actual value, "
-                "human readable name) tuples.",
+                "'choices' must be an iterable of tuples or a dictionary "
+                "containing (actual value, human readable name) tuples.",
                 obj=field,
                 id='fields.E005',
             ),
@@ -228,8 +228,8 @@ class CharFieldTests(SimpleTestCase):
                 field = model._meta.get_field('field')
                 self.assertEqual(field.check(), [
                     Error(
-                        "'choices' must be an iterable containing (actual "
-                        "value, human readable name) tuples.",
+                        "'choices' must be an iterable of tuples "
+                        "or a dictionary containing (actual value, human readable name) tuples.",
                         obj=field,
                         id='fields.E005',
                     ),
@@ -269,8 +269,8 @@ class CharFieldTests(SimpleTestCase):
         field = Model._meta.get_field('field')
         self.assertEqual(field.check(), [
             Error(
-                "'choices' must be an iterable containing (actual value, "
-                "human readable name) tuples.",
+                "'choices' must be an iterable of tuples or a dictionary "
+                "containing (actual value, human readable name) tuples.",
                 obj=field,
                 id='fields.E005',
             ),
@@ -290,8 +290,8 @@ class CharFieldTests(SimpleTestCase):
         field = Model._meta.get_field('field')
         self.assertEqual(field.check(), [
             Error(
-                "'choices' must be an iterable containing (actual value, "
-                "human readable name) tuples.",
+                "'choices' must be an iterable of tuples or a dictionary "
+                "containing (actual value, human readable name) tuples.",
                 obj=field,
                 id='fields.E005',
             ),
