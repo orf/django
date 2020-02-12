@@ -595,11 +595,11 @@ class ChoiceWidget(Widget):
                 option_value = ''
 
             subgroup = []
-            if isinstance(option_label, (list, tuple, dict)):
+            if isinstance(option_label, (list, tuple, collections.abc.Mapping)):
                 group_name = option_value
                 subindex = 0
                 choices = option_label
-                if isinstance(option_label, dict):
+                if isinstance(option_label, collections.abc.Mapping):
                     choices = option_label.items()
             else:
                 group_name = None
