@@ -143,16 +143,22 @@ class ChoicesTests(SimpleTestCase):
         cls.empty_choices_bool = Choiceful._meta.get_field('empty_choices_bool')
         cls.empty_choices_text = Choiceful._meta.get_field('empty_choices_text')
         cls.with_choices = Choiceful._meta.get_field('with_choices')
+        cls.with_choices_dict = Choiceful._meta.get_field('with_choices_dict')
+        cls.with_choices_nested_dict = Choiceful._meta.get_field('with_choices_nested_dict')
 
     def test_choices(self):
         self.assertIsNone(self.no_choices.choices)
-        self.assertEqual(self.empty_choices.choices, ())
+        self.assertEqual(self.empty_choices.choices, [])
         self.assertEqual(self.with_choices.choices, [(1, 'A')])
+        self.assertEqual(self.with_choices_dict.choices, [(1, 'A')])
+        self.assertEqual(self.with_choices_nested_dict.choices, [('Thing', [(1, 'A')])])
 
     def test_flatchoices(self):
         self.assertEqual(self.no_choices.flatchoices, [])
         self.assertEqual(self.empty_choices.flatchoices, [])
         self.assertEqual(self.with_choices.flatchoices, [(1, 'A')])
+        self.assertEqual(self.with_choices_dict.flatchoices, [(1, 'A')])
+        self.assertEqual(self.with_choices_nested_dict.flatchoices, [(1, 'A')])
 
     def test_check(self):
         self.assertEqual(Choiceful.check(), [])

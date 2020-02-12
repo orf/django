@@ -34,20 +34,18 @@ class Bar(models.Model):
 
 
 class Whiz(models.Model):
-    CHOICES = (
-        ('Group 1', (
-            (1, 'First'),
-            (2, 'Second'),
-        )
-        ),
-        ('Group 2', (
+    CHOICES = {
+        'Group 1': {
+            1: 'First',
+            2: 'Second',
+        },
+        'Group 2': (
             (3, 'Third'),
             (4, 'Fourth'),
-        )
         ),
-        (0, 'Other'),
-        (5, _('translated')),
-    )
+        0: 'Other',
+        5: _('translated'),
+    }
     c = models.IntegerField(choices=CHOICES, null=True)
 
 
@@ -60,7 +58,7 @@ WhizDelayed._meta.get_field('c').choices = Whiz.CHOICES
 
 
 class WhizIter(models.Model):
-    c = models.IntegerField(choices=iter(Whiz.CHOICES), null=True)
+    c = models.IntegerField(choices=iter(Whiz.CHOICES.items()), null=True)
 
 
 class WhizIterEmpty(models.Model):
@@ -71,6 +69,8 @@ class Choiceful(models.Model):
     no_choices = models.IntegerField(null=True)
     empty_choices = models.IntegerField(choices=(), null=True)
     with_choices = models.IntegerField(choices=[(1, 'A')], null=True)
+    with_choices_dict = models.IntegerField(choices={1: 'A'}, null=True)
+    with_choices_nested_dict = models.IntegerField(choices={'Thing': {1: 'A'}}, null=True)
     empty_choices_bool = models.BooleanField(choices=())
     empty_choices_text = models.TextField(choices=())
 
