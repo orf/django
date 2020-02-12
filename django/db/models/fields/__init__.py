@@ -177,14 +177,14 @@ class Field(RegisterLookupMixin):
         return self._choices
 
     def _set_choices(self, value):
-        if isinstance(value, collections.abc.Mapping):
+        if isinstance(value, (collections.abc.Iterator, collections.abc.Mapping)):
+            if isinstance(value, collections.abc.Mapping):
+                value = value.items()
             # Convert potentially nested dictionaries to a flat list of tuples structure.
             value = [
                 (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
-                for k, v in value.items()
+                for k, v in value
             ]
-        elif isinstance(value, collections.abc.Iterator):
-            value = list(value)
         self._choices = value
 
     choices = property(_get_choices, _set_choices)

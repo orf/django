@@ -35,10 +35,10 @@ class Bar(models.Model):
 
 class Whiz(models.Model):
     CHOICES = {
-        'Group 1': (
-            (1, 'First'),
-            (2, 'Second'),
-        ),
+        'Group 1': {
+            1: 'First',
+            2: 'Second',
+        },
         'Group 2': (
             (3, 'Third'),
             (4, 'Fourth'),
