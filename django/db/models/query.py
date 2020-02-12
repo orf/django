@@ -538,6 +538,7 @@ class QuerySet:
         batches = (objs[i:i + batch_size] for i in range(0, len(objs), batch_size))
         updates = []
         for batch_objs in batches:
+            print("batch...")
             update_kwargs = {}
             for field in fields:
                 when_statements = []

@@ -950,6 +950,9 @@ class Case(Expression):
         *self.cases, self.default = exprs
 
     def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):
+        print("resolving Case expression", self.cases[0])
+        import traceback
+        traceback.print_stack()
         c = self.copy()
         c.is_summary = summarize
         for pos, case in enumerate(c.cases):
