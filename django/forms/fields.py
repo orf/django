@@ -767,8 +767,7 @@ class CallableChoiceIterator:
     def __iter__(self):
         value = self.choices_func()
         if isinstance(value, dict):
-            yield from ChoiceField._flatten_dictionary_choices(value)
-            return
+            value = (value,)
         for item in value:
             if isinstance(item, dict):
                 yield from ChoiceField._flatten_dictionary_choices(item)
