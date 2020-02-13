@@ -405,7 +405,7 @@ class Field(RegisterLookupMixin):
 
     @choices.setter
     def choices(self, value):
-        if isinstance(value, collections.abc.Iterator):
+        if isinstance(value, (collections.abc.Iterator, dict)):
             if isinstance(value, dict):
                 value = value.items()
             # Convert potentially nested dictionaries to a flat list of tuples structure.
