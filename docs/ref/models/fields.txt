@@ -97,6 +97,23 @@ element is the human readable name. For example::
         'GR': 'Graduate',
     }
 
+You can also pass a list of two-tuples, where the first item is the value
+and the second is the human readable name, for example::
+
+     YEAR_IN_SCHOOL_CHOICES = [
+        ('FR', 'Freshman'),
+        ('SO', 'Sophomore'),
+        ('JR', 'Junior'),
+        ('SR', 'Senior'),
+        ('GR', 'Graduate'),
+    ]
+
+.. versionchanged: 3.1
+
+    Dictionary support was added. Previously Django only supported lists of
+    two-tuples, but since Python 3.6+ dictionaries preserve insertion order
+    so they are just as suitable.
+
 Generally, it's best to define choices inside a model class, and to
 define a suitably-named constant for each value::
 
@@ -147,11 +164,10 @@ be used for organizational purposes::
         'unknown': 'Unknown',
     }
 
-The first element in each tuple is the name to apply to the group. The
-second element is an iterable of 2-tuples, with each 2-tuple containing
-a value and a human-readable name for an option. Grouped options may be
-combined with ungrouped options within a single list (such as the
-``'unknown'`` option in this example).
+The key of the dictionary is the name to apply to the group and the value is
+the choices inside that group, consisting of the field value and a human-readable
+name for an option. Grouped options may be combined with ungrouped options within
+a single dictionary (such as the ``'unknown'`` option in this example).
 
 For each model field that has :attr:`~Field.choices` set, Django will add a
 method to retrieve the human-readable name for the field's current value. See
