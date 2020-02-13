@@ -173,22 +173,6 @@ class Field(RegisterLookupMixin):
         self._error_messages = error_messages  # Store for deconstruction later
         self.error_messages = messages
 
-    def _get_choices(self):
-        return self._choices
-
-    def _set_choices(self, value):
-        if isinstance(value, (collections.abc.Iterator, collections.abc.Mapping)):
-            if isinstance(value, collections.abc.Mapping):
-                value = value.items()
-            # Convert potentially nested dictionaries to a flat list of tuples structure.
-            value = [
-                (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
-                for k, v in value
-            ]
-        self._choices = value
-
-    choices = property(_get_choices, _set_choices)
-
     def __str__(self):
         """
         Return "app_label.model_label.field_name" for fields attached to
@@ -414,6 +398,22 @@ class Field(RegisterLookupMixin):
             return Col(alias, self, output_field)
         else:
             return self.cached_col
+
+    @property
+    def choices(self):
+        return self._choices
+
+    @choices.setter
+    def choices(self, value):
+        if isinstance(value, (collections.abc.Iterator, collections.abc.Mapping)):
+            if isinstance(value, collections.abc.Mapping):
+                value = value.items()
+            # Convert potentially nested dictionaries to a flat list of tuples structure.
+            value = [
+                (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
+                for k, v in value
+            ]
+        self._choices = value
 
     @cached_property
     def cached_col(self):
