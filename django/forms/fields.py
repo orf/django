@@ -1,7 +1,6 @@
 """
 Field classes.
 """
-import collections
 import copy
 import datetime
 import json
@@ -766,7 +765,15 @@ class CallableChoiceIterator:
         self.choices_func = choices_func
 
     def __iter__(self):
-        yield from self.choices_func()
+        value = self.choices_func()
+        if isinstance(value, dict):
+            yield from ChoiceField._flatten_dictionary_choices(value)
+            return
+        for item in value:
+            if isinstance(item, dict):
+                yield from ChoiceField._flatten_dictionary_choices(item)
+            else:
+                yield item
 
 
 class ChoiceField(Field):
@@ -793,18 +800,22 @@ class ChoiceField(Field):
         # it will be consumed more than once.
         if callable(value):
             value = CallableChoiceIterator(value)
-        elif isinstance(value, collections.abc.Mapping):
+        elif isinstance(value, dict):
             # Convert potentially nested dictionaries to a flat list of tuples structure.
-            value = [
-                (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
-                for k, v in value.items()
-            ]
+            value = list(self._flatten_dictionary_choices(value))
         else:
             value = list(value)
 
         self._choices = self.widget.choices = value
 
     choices = property(_get_choices, _set_choices)
+
+    @staticmethod
+    def _flatten_dictionary_choices(dictionary):
+        return (
+            (k, list(v.items()) if isinstance(v, dict) else v)
+            for k, v in dictionary.items()
+        )
 
     def to_python(self, value):
         """Return a string."""

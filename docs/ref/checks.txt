@@ -160,10 +160,9 @@ Model fields
 
 * **fields.E001**: Field names must not end with an underscore.
 * **fields.E002**: Field names must not contain ``"__"``.
-* **fields.E003**: ``pk`` is a reserved word that cannot be used as a field
-  name.
+* **fields.E003**: ``pk`` is a reserved word that cannot be used as a field name.
 * **fields.E004**: ``choices`` must be a dictionary or an iterable
- (e.g., a list or tuple).
+  (e.g., a list or tuple).
 * **fields.E005**: ``choices`` must be an iterable of tuples or a dictionary
   containing returning ``(actual value, human readable name)`` tuples.
 * **fields.E006**: ``db_index`` must be ``None``, ``True`` or ``False``.
