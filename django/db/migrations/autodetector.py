@@ -967,6 +967,11 @@ class MigrationAutodetector:
             old_field_dec = self.deep_deconstruct(old_field)
             new_field_dec = self.deep_deconstruct(new_field)
             if old_field_dec != new_field_dec:
+                # Skip auto-migrating AutoField -> BigAutoField
+                if isinstance(old_field, models.AutoField) and isinstance(new_field, models.BigAutoField) \
+                    and old_field.auto_created and new_field.auto_created:
+                    continue
+
                 both_m2m = old_field.many_to_many and new_field.many_to_many
                 neither_m2m = not old_field.many_to_many and not new_field.many_to_many
                 if both_m2m or neither_m2m:

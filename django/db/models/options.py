@@ -7,7 +7,7 @@ from django.apps import apps
 from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist
 from django.db import connections
-from django.db.models import AutoField, Manager, OrderWrt, UniqueConstraint
+from django.db.models import BigAutoField, Manager, OrderWrt, UniqueConstraint
 from django.db.models.query_utils import PathInfo
 from django.utils.datastructures import ImmutableList, OrderedSet
 from django.utils.functional import cached_property
@@ -250,7 +250,7 @@ class Options:
                 field.primary_key = True
                 self.setup_pk(field)
             else:
-                auto = AutoField(verbose_name='ID', primary_key=True, auto_created=True)
+                auto = BigAutoField(verbose_name='ID', primary_key=True, auto_created=True)
                 model.add_to_class('id', auto)
 
     def add_manager(self, manager):
