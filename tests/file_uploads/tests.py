@@ -617,7 +617,7 @@ class DirectoryCreationTests(SimpleTestCase):
     def setUp(self):
         self.obj = FileModel()
 
-    @unittest.skipIf(sys.platform == 'win32', "Python on Windows doesn't have working os.chmod().")
+    @unittest.skipIf(sys.platform == 'win32' or os.getuid() == 0, "Python on Windows doesn't have working os.chmod().")
     def test_readonly_root(self):
         """Permission errors are not swallowed"""
         os.chmod(MEDIA_ROOT, 0o500)

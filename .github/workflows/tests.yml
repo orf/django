@@ -1,0 +1,233 @@
+on:
+  pull_request:
+
+name: Tests
+
+jobs:
+  sqlite:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [ 3.7, 3.8, 3.9 ]
+    name: sqlite-${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        uses: ./.github/test-action/
+        with:
+          app: ${{github.job}}
+          python: ${{matrix.python}}
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  sqlite-gis:
+    runs-on: ubuntu-latest
+    needs: [ sqlite ]
+    strategy:
+      matrix:
+        python: [ 3.7, 3.8, 3.9 ]
+    name: sqlite-${{ matrix.python }}-gis
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        uses: ./.github/test-action/
+        with:
+          app: ${{github.job}}
+          test_name: gis_tests
+          python: ${{matrix.python}}
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  postgres:
+    needs: [ sqlite ]
+    strategy:
+      matrix:
+        python: [ 3.7, 3.8, 3.9 ]
+        postgres: [ 9.6, 10, 11 ]
+    runs-on: ubuntu-latest
+    name: postgres-${{ matrix.python }}-${{ matrix.postgres }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        uses: ./.github/test-action/
+        with:
+          app: ${{github.job}}
+          python: ${{matrix.python}}
+          postgres: ${{matrix.postgres}}
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  postgres-gis:
+    needs: [ sqlite ]
+    strategy:
+      matrix:
+        python: [ 3.7, 3.8, 3.9 ]
+        postgres: [ 9.6, 10 ]
+        postgis: [ "2.5", "3.0" ]
+    runs-on: ubuntu-latest
+    name: postgres-gis-${{ matrix.python }}-${{ matrix.postgres }}-${{ matrix.postgis }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        uses: ./.github/test-action/
+        with:
+          app: ${{github.job}}
+          python: ${{matrix.python}}
+          test_name: "gis_tests"
+          postgres: ${{matrix.postgres}}
+          postgis: ${{matrix.postgis}}
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  mysql:
+    needs: [ sqlite ]
+    strategy:
+      matrix:
+        python: [ 3.7, 3.8, 3.9 ]
+        mysql: [ 5.7, 8.0 ]
+    runs-on: ubuntu-latest
+    name: mysql-${{ matrix.python }}-${{ matrix.mysql }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        uses: ./.github/test-action/
+        with:
+          app: ${{github.job}}
+          python: ${{matrix.python}}
+          mysql: ${{matrix.mysql}}
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  mysql-gis:
+    needs: [ sqlite ]
+    strategy:
+      matrix:
+        python: [ 3.7, 3.8, 3.9 ]
+        mysql: [ 5.7, 8.0 ]
+    runs-on: ubuntu-latest
+    name: mysql-${{ matrix.python }}-${{ matrix.mysql }}-gis
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        uses: ./.github/test-action/
+        with:
+          app: ${{github.job}}
+          python: ${{matrix.python}}
+          test_name: "gis_tests"
+          mysql: ${{matrix.mysql}}
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  mariadb:
+    needs: [ sqlite ]
+    strategy:
+      matrix:
+        python: [ 3.7, 3.8, 3.9 ]
+        mariadb: [ 10.2, 10.3, 10.4, 10.5 ]
+    runs-on: ubuntu-latest
+    name: mariadb-${{ matrix.python }}-${{ matrix.mariadb }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        uses: ./.github/test-action/
+        with:
+          app: ${{github.job}}
+          python: ${{matrix.python}}
+          mariadb: ${{matrix.mariadb}}
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  non_docker_test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ windows-latest, macos-latest ]
+        python: [ 3.8 ]
+    name: sqlite-${{ matrix.python }}-${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('tests/requirements/py3.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - run: brew install libmemcached
+        if: ${{ matrix.os == 'macos-latest' }}
+      - run: pip install -q wheel pip
+      - run: pip install -q -r tests/requirements/py3.txt -e .
+      - run: python tests/runtests.py -v1
+        env:
+          PYTHONUNBUFFERED: "1"
+
+  flake8:
+    name: flake8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - run: pip3 install flake8
+      - name: flake8
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: flake8
+          run: flake8
+
+  isort:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - run: pip3 install isort
+      - name: isort
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: isort
+          run: isort --check .
+
+  spelling:
+    runs-on: ubuntu-latest
+    name: spelling
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: docs/_build/doctrees/
+          key: sphinx-cache
+      - name: Run docs spellcheck
+        uses: ./.github/test-action/
+        with:
+          app: ${{github.job}}
+          python: 3.7
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+      - run: |
+          if test -f "docs/_build/spelling/output.txt"; then
+              cat docs/_build/spelling/output.txt;
+              exit 1;
+          fi
+        shell: bash
+
+  chrome:
+    runs-on: ubuntu-latest
+    name: JS tests - Chrome
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        uses: ./.github/test-action/
+        with:
+          app: ${{github.job}}
+          python: 3.7
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
+
+  firefox:
+    runs-on: ubuntu-latest
+    name: JS tests - Firefox
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        uses: ./.github/test-action/
+        with:
+          app: ${{github.job}}
+          python: 3.7
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
