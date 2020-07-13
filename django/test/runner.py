@@ -429,31 +429,33 @@ class TimingTextTestResult(unittest.TextTestResult):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.start_time = None
+        self.times = []
 
-    def print_time(self):
+    def print_time(self, test):
         total = time.perf_counter() - self.start_time
         self.start_time = None
         if self.showAll:
             self.stream.write("{:.2f}s ".format(total))
+        self.times.append((test, total))
 
     def startTest(self, test):
-        super().startTest(test)
         self.start_time = time.perf_counter()
+        super().startTest(test)
 
     def addSuccess(self, test):
-        self.print_time()
+        self.print_time(test)
         super().addSuccess(test)
 
     def addError(self, test, err):
-        self.print_time()
+        self.print_time(test)
         super().addError(test, err)
 
     def addFailure(self, test, err):
-        self.print_time()
+        self.print_time(test)
         super().addFailure(test, err)
 
     def addUnexpectedSuccess(self, test):
-        self.print_time()
+        self.print_time(test)
         super().addUnexpectedSuccess(test)
 
 
