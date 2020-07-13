@@ -186,7 +186,7 @@ class FileSystemLoaderTests(SimpleTestCase):
             self.engine.get_template('doesnotexist.html')
 
     @unittest.skipIf(
-        sys.platform == 'win32',
+        sys.platform == 'win32' or os.getuid() == 0,
         "Python on Windows doesn't have working os.chmod().",
     )
     def test_permissions_error(self):

@@ -2,12 +2,13 @@
 #
 
 # You can set these variables from the command line.
-PYTHON        ?= python
-SPHINXOPTS    ?=
-SPHINXBUILD   ?= sphinx-build
-PAPER         ?=
-BUILDDIR      ?= _build
-LANGUAGE      ?=
+PYTHON        	  ?= python
+SPHINXOPTS    	  ?=
+SPHINXBUILD   	  ?= sphinx-build
+PAPER         	  ?=
+BUILDDIR          ?= _build
+LANGUAGE      	  ?=
+SPHINX_CACHE_DIR  ?= $(BUILDDIR)/doctrees
 
 # Convert something like "en_US" to "en", because Sphinx does not recognize
 # underscores. Country codes should be passed using a dash, e.g. "pt-BR".
@@ -16,7 +17,7 @@ LANGUAGEOPT = $(firstword $(subst _, ,$(LANGUAGE)))
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS   = -n -d $(BUILDDIR)/doctrees -D language=$(LANGUAGEOPT) $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
+ALLSPHINXOPTS   = -n -d $(SPHINX_CACHE_DIR) -D language=$(LANGUAGEOPT) $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 

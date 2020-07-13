@@ -1,0 +1,5 @@
+sphinx
+pyenchant
+sphinxcontrib-spelling
+asgiref
+
