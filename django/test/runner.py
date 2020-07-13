@@ -8,6 +8,7 @@ import os
 import pickle
 import sys
 import textwrap
+import time
 import unittest
 from importlib import import_module
 from io import StringIO
@@ -424,12 +425,48 @@ class ParallelTestSuite(unittest.TestSuite):
         return iter(self.subsuites)
 
 
+class TimingTextTestResult(unittest.TextTestResult):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.start_time = None
+
+    def print_time(self):
+        total = time.perf_counter() - self.start_time
+        self.start_time = None
+        if self.showAll:
+            self.stream.write("{:.2f}s ".format(total))
+
+    def startTest(self, test):
+        super().startTest(test)
+        self.start_time = time.perf_counter()
+
+    def addSuccess(self, test):
+        self.print_time()
+        super().addSuccess(test)
+
+    def addError(self, test, err):
+        self.print_time()
+        super().addError(test, err)
+
+    def addFailure(self, test, err):
+        self.print_time()
+        super().addFailure(test, err)
+
+    def addUnexpectedSuccess(self, test):
+        self.print_time()
+        super().addUnexpectedSuccess(test)
+
+
+class TimingTextTestRunner(unittest.TextTestRunner):
+    resultclass = TimingTextTestResult
+
+
 class DiscoverRunner:
     """A Django test runner that uses unittest2 test discovery."""
 
     test_suite = unittest.TestSuite
     parallel_test_suite = ParallelTestSuite
-    test_runner = unittest.TextTestRunner
+    test_runner = TimingTextTestRunner
     test_loader = unittest.defaultTestLoader
     reorder_by = (TestCase, SimpleTestCase)
 
