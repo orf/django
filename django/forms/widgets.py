@@ -4,7 +4,7 @@ HTML Widget classes
 import copy
 import datetime
 import warnings
-from collections import defaultdict
+from collections import defaultdict, Mapping
 from itertools import chain
 
 from django.forms.utils import to_current_timezone
@@ -555,10 +555,10 @@ class ChoiceWidget(Widget):
         # choices can be any iterable, but we may need to render this widget
         # multiple times. Thus, collapse it into a list so it can be consumed
         # more than once.
-        if isinstance(choices, dict):
+        if isinstance(choices, Mapping):
             # Convert potentially nested dictionaries to a flat list of tuples structure.
             self.choices = [
-                (k, list(v.items()) if isinstance(v, dict) else v)
+                (k, list(v.items()) if isinstance(v, Mapping) else v)
                 for k, v in choices.items()
             ]
         else:
@@ -594,11 +594,11 @@ class ChoiceWidget(Widget):
                 option_value = ''
 
             subgroup = []
-            if isinstance(option_label, (list, tuple, dict)):
+            if isinstance(option_label, (list, tuple, Mapping)):
                 group_name = option_value
                 subindex = 0
                 choices = option_label
-                if isinstance(option_label, dict):
+                if isinstance(option_label, Mapping):
                     choices = option_label.items()
             else:
                 group_name = None

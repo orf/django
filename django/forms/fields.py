@@ -9,6 +9,7 @@ import operator
 import os
 import re
 import uuid
+from collections import Mapping
 from decimal import Decimal, DecimalException
 from io import BytesIO
 from urllib.parse import urlsplit, urlunsplit
@@ -765,11 +766,14 @@ class CallableChoiceIterator:
         self.choices_func = choices_func
 
     def __iter__(self):
+        # choices_func() may return a single dictionary or an iterable of dictionaries.
+        # Because iterating over a mapping yields only the keys, we need to explicitly
+        # check each item before yielding.
         value = self.choices_func()
-        if isinstance(value, dict):
+        if isinstance(value, Mapping):
             value = (value,)
         for item in value:
-            if isinstance(item, dict):
+            if isinstance(item, Mapping):
                 yield from ChoiceField._flatten_dictionary_choices(item)
             else:
                 yield item
@@ -799,7 +803,7 @@ class ChoiceField(Field):
         # it will be consumed more than once.
         if callable(value):
             value = CallableChoiceIterator(value)
-        elif isinstance(value, dict):
+        elif isinstance(value, Mapping):
             # Convert potentially nested dictionaries to a flat list of tuples structure.
             value = list(self._flatten_dictionary_choices(value))
         else:
@@ -812,7 +816,7 @@ class ChoiceField(Field):
     @staticmethod
     def _flatten_dictionary_choices(dictionary):
         return (
-            (k, list(v.items()) if isinstance(v, dict) else v)
+            (k, list(v.items()) if isinstance(v, Mapping) else v)
             for k, v in dictionary.items()
         )
 
