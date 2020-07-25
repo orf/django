@@ -168,6 +168,22 @@ the choices inside that group, consisting of the field value and a human-readabl
 name for an option. Grouped options may be combined with ungrouped options within
 a single dictionary (such as the ``'unknown'`` option in this example).
 
+You can also use a list of tuples instead of a dictionary::
+
+    MEDIA_CHOICES = [
+        ('Audio', (
+                ('vinyl', 'Vinyl'),
+                ('cd', 'CD'),
+            )
+        ),
+        ('Video', (
+                ('vhs', 'VHS Tape'),
+                ('dvd', 'DVD'),
+            )
+        ),
+        ('unknown', 'Unknown'),
+    ]
+
 For each model field that has :attr:`~Field.choices` set, Django will add a
 method to retrieve the human-readable name for the field's current value. See
 :meth:`~django.db.models.Model.get_FOO_display` in the database API
