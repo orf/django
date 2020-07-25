@@ -4,7 +4,7 @@ HTML Widget classes
 import copy
 import datetime
 import warnings
-from collections import defaultdict, Mapping
+from collections import Mapping, defaultdict
 from itertools import chain
 
 from django.forms.utils import to_current_timezone
