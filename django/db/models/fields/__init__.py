@@ -297,8 +297,9 @@ class Field(RegisterLookupMixin):
 
         return [
             checks.Error(
-                "'choices' must be an iterable of tuples or a dictionary "
-                "containing (actual value, human readable name) tuples.",
+                "'choices' must be a dictionary that maps actual choice values"
+                " to human readable names or a sequence of (actual value, "
+                "human readable name) tuples."
                 obj=self,
                 id='fields.E005',
             )
