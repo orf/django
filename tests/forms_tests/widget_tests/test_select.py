@@ -307,8 +307,9 @@ class SelectTest(WidgetTest):
             k: dict(v) if isinstance(v, list) else v
             for k, v in choices_dict.items()
         }
+        choices_list_nested_dict = list(choices_nested_dict.items())
 
-        for choices in (choices_dict, choices_list, choices_nested_dict):
+        for choices in (choices_dict, choices_list, choices_nested_dict, choices_list_nested_dict):
             with self.subTest(choices):
                 groups = list(self.widget(choices=choices).optgroups(
                     'name', ['vhs'], attrs={'class': 'super'},
