@@ -247,7 +247,7 @@ class Field(RegisterLookupMixin):
         if not is_iterable(self.choices) or isinstance(self.choices, str):
             return [
                 checks.Error(
-                    "'choices' must be a dictionary or an iterable (e.g., a list or tuple).",
+                    "'choices' must be a mapping (e.g. a dictionary) or an iterable (e.g., a list or tuple).",
                     obj=self,
                     id='fields.E004',
                 )
@@ -299,7 +299,7 @@ class Field(RegisterLookupMixin):
             checks.Error(
                 "'choices' must be a dictionary that maps actual choice values"
                 " to human readable names or a sequence of (actual value, "
-                "human readable name) tuples."
+                "human readable name) tuples.",
                 obj=self,
                 id='fields.E005',
             )

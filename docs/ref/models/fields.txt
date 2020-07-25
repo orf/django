@@ -80,11 +80,10 @@ If a field has ``blank=False``, the field will be required.
 
 .. attribute:: Field.choices
 
-A dictionary consisting of iterables of exactly two items (e.g.
-``[(A, B), (A, B) ...]``) to use as choices for this field. If choices are
-given, they're enforced by :ref:`model validation <validating-objects>` and the
-default form widget will be a select box with these choices instead of the
-standard text field.
+A dictionary or iterable in the format described below to use as choices for this
+field. If choices are given, they're enforced by
+:ref:`model validation <validating-objects>` and the default form widget will
+be a select box with these choices instead of the standard text field.
 
 The key element is the actual value to be set on the model, and the second
 element is the human readable name. For example::
