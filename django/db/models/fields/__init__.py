@@ -636,10 +636,9 @@ class Field(RegisterLookupMixin):
 
         if self.choices is not None and value not in self.empty_values:
             for option_key, option_value in self.choices:
-                if isinstance(option_value, (list, tuple, collections.abc.Mapping)):
-                    # This is an optgroup, so look inside the group for options.
-                    if isinstance(option_value, collections.abc.Mapping):
-                        option_value = option_value.items()
+                if isinstance(option_value, (list, tuple)):
+                    # This is an optgroup, so look inside the group for
+                    # options.
                     for optgroup_key, optgroup_value in option_value:
                         if value == optgroup_key:
                             return
@@ -898,8 +897,6 @@ class Field(RegisterLookupMixin):
         for choice, value in self.choices:
             if isinstance(value, (list, tuple)):
                 flat.extend(value)
-            elif isinstance(value, collections.abc.Mapping):
-                flat.extend(value.items())
             else:
                 flat.append((choice, value))
         return flat

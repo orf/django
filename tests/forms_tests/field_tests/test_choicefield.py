@@ -69,12 +69,6 @@ class ChoiceFieldTest(FormFieldAssertionsMixin, SimpleTestCase):
         f = ChoiceField(choices=choices)
         self.assertEqual('J', f.clean('J'))
 
-    def test_choicefield_callable_iterable_mapping(self):
-        def choices():
-            return [{'J': 'John'}, {'P': 'Paul'}]
-        f = ChoiceField(choices=choices)
-        self.assertEqual('J', f.clean('J'))
-
     def test_choicefield_callable_grouped_mapping(self):
         def choices():
             return {

@@ -767,17 +767,11 @@ class CallableChoiceIterator:
         self.choices_func = choices_func
 
     def __iter__(self):
-        # choices_func() may return a single dictionary or an iterable of dictionaries.
-        # Because iterating over a mapping yields only the keys, we need to explicitly
-        # check each item before yielding.
         value = self.choices_func()
         if isinstance(value, collections.abc.Mapping):
-            value = (value,)
-        for item in value:
-            if isinstance(item, collections.abc.Mapping):
-                yield from ChoiceField._flatten_dictionary_choices(item)
-            else:
-                yield item
+            yield from ChoiceField._flatten_dictionary_choices(value)
+        else:
+            yield from value
 
 
 class ChoiceField(Field):
