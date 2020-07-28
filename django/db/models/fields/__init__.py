@@ -6,7 +6,6 @@ import operator
 import uuid
 import warnings
 from base64 import b64decode, b64encode
-from collections import Mapping
 from functools import partialmethod, total_ordering
 
 from django import forms
@@ -407,12 +406,12 @@ class Field(RegisterLookupMixin):
 
     @choices.setter
     def choices(self, value):
-        if isinstance(value, (collections.abc.Iterator, Mapping)):
+        if isinstance(value, (collections.abc.Iterator, collections.abc.Mapping)):
             if isinstance(value, dict):
                 value = value.items()
             # Convert potentially nested dictionaries to a flat list of tuples structure.
             value = [
-                (k, list(v.items()) if isinstance(v, Mapping) else v)
+                (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
                 for k, v in value
             ]
         self._choices = value

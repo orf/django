@@ -1,6 +1,8 @@
 """
 Field classes.
 """
+
+import collections.abc
 import copy
 import datetime
 import json
@@ -9,7 +11,6 @@ import operator
 import os
 import re
 import uuid
-from collections import Mapping
 from decimal import Decimal, DecimalException
 from io import BytesIO
 from urllib.parse import urlsplit, urlunsplit
@@ -770,10 +771,10 @@ class CallableChoiceIterator:
         # Because iterating over a mapping yields only the keys, we need to explicitly
         # check each item before yielding.
         value = self.choices_func()
-        if isinstance(value, Mapping):
+        if isinstance(value, collections.abc.Mapping):
             value = (value,)
         for item in value:
-            if isinstance(item, Mapping):
+            if isinstance(item, collections.abc.Mapping):
                 yield from ChoiceField._flatten_dictionary_choices(item)
             else:
                 yield item
@@ -803,7 +804,7 @@ class ChoiceField(Field):
         # it will be consumed more than once.
         if callable(value):
             value = CallableChoiceIterator(value)
-        elif isinstance(value, Mapping):
+        elif isinstance(value, collections.abc.Mapping):
             # Convert potentially nested dictionaries to a flat list of tuples structure.
             value = list(self._flatten_dictionary_choices(value))
         else:
@@ -816,7 +817,7 @@ class ChoiceField(Field):
     @staticmethod
     def _flatten_dictionary_choices(dictionary):
         return (
-            (k, list(v.items()) if isinstance(v, Mapping) else v)
+            (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
             for k, v in dictionary.items()
         )
 
