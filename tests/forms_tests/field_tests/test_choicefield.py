@@ -120,11 +120,13 @@ class ChoiceFieldTest(FormFieldAssertionsMixin, SimpleTestCase):
 
         choices = [('J', 'John')]
         form = ChoiceFieldForm()
-        self.assertEqual([('J', 'John')], list(form.fields['choicefield'].choices))
+        self.assertEqual(choices, list(form.fields['choicefield'].choices))
+        self.assertEqual(choices, list(form.fields['choicefield'].widget.choices))
 
         choices = [('P', 'Paul')]
         form = ChoiceFieldForm()
-        self.assertEqual([('P', 'Paul')], list(form.fields['choicefield'].choices))
+        self.assertEqual(choices, list(form.fields['choicefield'].choices))
+        self.assertEqual(choices, list(form.fields['choicefield'].widget.choices))
 
     def test_choicefield_disabled(self):
         f = ChoiceField(choices=[('J', 'John'), ('P', 'Paul')], disabled=True)
