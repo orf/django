@@ -385,8 +385,6 @@ Models
 
 * The new :attr:`.UniqueConstraint.deferrable` attribute allows creating
   deferrable unique constraints.
-* :attr:`Field.choices<django.db.models.Field.choices>` now allows you to
-  pass a dictionary instead of a list of tuples.
 
 Pagination
 ~~~~~~~~~~
