@@ -91,7 +91,7 @@ class ChoiceFieldTest(FormFieldAssertionsMixin, SimpleTestCase):
         f = ChoiceField(choices={'J': 'John', 'P': 'Paul'})
         self.assertEqual('J', f.clean('J'))
 
-    def test_choicefiled_grouped_mapping(self):
+    def test_choicefield_grouped_mapping(self):
         f = ChoiceField(choices={
             'Numbers': (('1', 'One'), ('2', 'Two')),
             'Letters': (('3', 'A'), ('4', 'B'))
@@ -100,7 +100,7 @@ class ChoiceFieldTest(FormFieldAssertionsMixin, SimpleTestCase):
             with self.subTest(i):
                 self.assertEqual(i, f.clean(i))
 
-    def test_choicefiled_grouped_mapping_inner_dict(self):
+    def test_choicefield_grouped_mapping_inner_dict(self):
         f = ChoiceField(choices={
             'Numbers': {'1': 'One', '2': 'Two'},
             'Letters': {'3': 'A', '4': 'B'}
