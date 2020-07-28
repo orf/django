@@ -2,7 +2,6 @@
 Field classes.
 """
 
-import collections.abc
 import copy
 import datetime
 import json
@@ -27,6 +26,7 @@ from django.forms.widgets import (
     TimeInput, URLInput,
 )
 from django.utils import formats
+from django.utils.choices import normalize_field_choices
 from django.utils.dateparse import parse_datetime, parse_duration
 from django.utils.duration import duration_string
 from django.utils.ipv6 import clean_ipv6_address
@@ -767,11 +767,7 @@ class CallableChoiceIterator:
         self.choices_func = choices_func
 
     def __iter__(self):
-        value = self.choices_func()
-        if isinstance(value, collections.abc.Mapping):
-            yield from ChoiceField._flatten_dictionary_choices(value)
-        else:
-            yield from value
+        yield from normalize_field_choices(self.choices_func())
 
 
 class ChoiceField(Field):
@@ -789,31 +785,20 @@ class ChoiceField(Field):
         result._choices = copy.deepcopy(self._choices, memo)
         return result
 
-    def _get_choices(self):
+    @property
+    def choices(self):
         return self._choices
 
-    def _set_choices(self, value):
-        # Setting choices also sets the choices on the widget.
-        # choices can be any iterable, but we call list() on it because
-        # it will be consumed more than once.
+    @choices.setter
+    def choices(self, value):
         if callable(value):
             value = CallableChoiceIterator(value)
-        elif isinstance(value, collections.abc.Mapping):
-            # Convert potentially nested dictionaries to a flat list of tuples structure.
-            value = list(self._flatten_dictionary_choices(value))
         else:
-            value = list(value)
+            value = normalize_field_choices(value)
 
-        self._choices = self.widget.choices = value
-
-    choices = property(_get_choices, _set_choices)
-
-    @staticmethod
-    def _flatten_dictionary_choices(dictionary):
-        return (
-            (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
-            for k, v in dictionary.items()
-        )
+        # Setting choices on the field also sets the choices on the widget.
+        # Note that we bypass the property setter to avoid re-normalizing.
+        self._choices = self.widget._choices = value
 
     def to_python(self, value):
         """Return a string."""

@@ -1,4 +1,3 @@
-import collections.abc
 import copy
 import datetime
 import decimal
@@ -16,6 +15,7 @@ from django.db import connection, connections, router
 from django.db.models.constants import LOOKUP_SEP
 from django.db.models.query_utils import DeferredAttribute, RegisterLookupMixin
 from django.utils import timezone
+from django.utils.choices import normalize_field_choices
 from django.utils.datastructures import DictWrapper
 from django.utils.dateparse import (
     parse_date, parse_datetime, parse_duration, parse_time,
@@ -406,15 +406,7 @@ class Field(RegisterLookupMixin):
 
     @choices.setter
     def choices(self, value):
-        if isinstance(value, (collections.abc.Iterator, collections.abc.Mapping)):
-            if isinstance(value, collections.abc.Mapping):
-                value = value.items()
-            # Convert potentially nested dictionaries to a flat list of tuples structure.
-            value = [
-                (k, list(v.items()) if isinstance(v, collections.abc.Mapping) else v)
-                for k, v in value
-            ]
-        self._choices = value
+        self._choices = normalize_field_choices(value)
 
     @cached_property
     def cached_col(self):
@@ -495,9 +487,6 @@ class Field(RegisterLookupMixin):
         equals_comparison = {"choices", "validators"}
         for name, default in possibles.items():
             value = getattr(self, attr_overrides.get(name, name))
-            # Unroll anything iterable for choices into a concrete list
-            if name == "choices" and isinstance(value, collections.abc.Iterable):
-                value = list(value)
             # Do correct kind of comparison
             if name in equals_comparison:
                 if value != default:

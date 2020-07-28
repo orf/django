@@ -118,7 +118,7 @@ class ChoicesTests(SimpleTestCase):
 
     def test_choices(self):
         self.assertIsNone(self.no_choices.choices)
-        self.assertEqual(self.empty_choices.choices, ())
+        self.assertEqual(self.empty_choices.choices, [])
         self.assertEqual(self.with_choices.choices, [(1, 'A')])
         self.assertEqual(self.with_choices_dict.choices, [(1, 'A')])
         self.assertEqual(self.with_choices_nested_dict.choices, [('Thing', [(1, 'A')])])
