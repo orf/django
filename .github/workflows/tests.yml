@@ -227,5 +227,3 @@ jobs:
           app: ${{github.job}}
           python: 3.7
           docker_token: ${{ secrets.DOCKER_TOKEN }}
-        # Currently failing on master
-        continue-on-error: true
