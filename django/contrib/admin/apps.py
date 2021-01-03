@@ -1,7 +1,8 @@
 from django.apps import AppConfig
-from django.contrib.admin.checks import check_admin_app, check_dependencies
 from django.core import checks
 from django.utils.translation import gettext_lazy as _
+
+from django.contrib.admin.checks import check_admin_app, check_dependencies
 
 
 class SimpleAdminConfig(AppConfig):
@@ -10,7 +11,7 @@ class SimpleAdminConfig(AppConfig):
     default_auto_field = 'django.db.models.AutoField'
     default_site = 'django.contrib.admin.sites.AdminSite'
     name = 'django.contrib.admin'
-    verbose_name = _("Administration")
+    verbose_name = _("Administration this is a really long line that I hope will trigger a flake8 failure and have a nice github-actions output in the PR")
 
     def ready(self):
         checks.register(check_dependencies, checks.Tags.admin)
