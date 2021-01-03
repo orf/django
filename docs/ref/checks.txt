@@ -170,8 +170,8 @@ Model fields
 * **fields.E004**: ``choices`` must be a dictionary or an iterable
   (e.g., a list or tuple).
 * **fields.E005**: ``choices`` must be a dictionary that maps actual choice
-values to human readable names or a sequence of ``(actual value, human readable
-name)`` tuples.
+  values to human readable names or a sequence of ``(actual value, human readable
+  name)`` tuples.
 * **fields.E006**: ``db_index`` must be ``None``, ``True`` or ``False``.
 * **fields.E007**: Primary keys must not have ``null=True``.
 * **fields.E008**: All ``validators`` must be callable.
