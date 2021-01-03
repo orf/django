@@ -165,12 +165,12 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
-      - name: python-flake8
-        uses: julianwachholz/flake8-action@v1.1.0
+      - run: pip3 install flake8
+      - name: flake8
+        uses: liskin/gh-problem-matcher-wrap@v1
         with:
-          checkName: 'flake8'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          linters: flake8
+          run: flake8
 
   isort:
     runs-on: ubuntu-latest
@@ -179,7 +179,12 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.8
-      - uses: jamescurtin/isort-action@master
+      - run: pip3 install isort
+      - name: isort
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: isort
+          run: isort --check .
 
   spelling:
     runs-on: ubuntu-latest
