@@ -5,5 +5,3 @@ base    = "docs/"
 
 [context.deploy-preview.environment]
 PYTHON_VERSION = "3.7"
-SPHINX_CACHE_DIR = "${HOME}/.cache/pip/_sphinx/"
-SPHINXOPTS = "-j auto"
