@@ -259,7 +259,7 @@ jobs:
           PYTHONUNBUFFERED: "1"
 
   non-docker-test-full:
-    if: contains(github.event.issue.labels.*.name, 'Full-Build')
+    if: contains(github.event.issue.labels.*.name, 'Full-WindowsAndMac') || contains(github.event.issue.labels.*.name, 'Full-Build')
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
