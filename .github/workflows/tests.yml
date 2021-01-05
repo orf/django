@@ -18,13 +18,12 @@ jobs:
       - name: Run tests
         uses: ./.github/test-action/
         with:
-          app: ${{github.job}}
+          app: sqlite
           python: ${{matrix.python}}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
 
   sqlite-gis:
     runs-on: ubuntu-latest
-    needs: [ sqlite ]
     strategy:
       matrix:
         python: [ 3.7, 3.8, 3.9 ]
@@ -34,7 +33,7 @@ jobs:
       - name: Run tests
         uses: ./.github/test-action/
         with:
-          app: ${{github.job}}
+          app: sqlite-gis
           test_name: gis_tests
           python: ${{matrix.python}}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
@@ -62,7 +61,7 @@ jobs:
     needs: [ sqlite ]
     strategy:
       matrix:
-        python: [ 3.7, 3.8, 3.9 ]
+        python: [ 3.8, 3.9 ]
         postgres: [ 9.6, 10, 11 ]
     runs-on: ubuntu-latest
     name: postgres-${{ matrix.python }}-${{ matrix.postgres }}
@@ -99,10 +98,10 @@ jobs:
 
   postgres-gis-full:
     if: contains(github.event.pull_request.labels.*.name, 'Full-Postgres') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
-    needs: [ sqlite ]
+    needs: [ postgres-gis-quick ]
     strategy:
       matrix:
-        python: [ 3.7, 3.8, 3.9 ]
+        python: [ 3.8, 3.9 ]
         postgres: [ 9.6, 10 ]
         postgis: [ "2.5", "3.0" ]
     runs-on: ubuntu-latest
@@ -140,10 +139,10 @@ jobs:
 
   mysql-full:
     if: contains(github.event.pull_request.labels.*.name, 'Full-MySQL') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
-    needs: [ sqlite ]
+    needs: [ mysql-quick ]
     strategy:
       matrix:
-        python: [ 3.7, 3.8, 3.9 ]
+        python: [ 3.8, 3.9 ]
         mysql: [ 5.7, 8.0 ]
     runs-on: ubuntu-latest
     name: mysql-${{ matrix.python }}-${{ matrix.mysql }}
@@ -178,10 +177,10 @@ jobs:
 
   mysql-gis-full:
     if: contains(github.event.pull_request.labels.*.name, 'Full-MySQL') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
-    needs: [ sqlite ]
+    needs: [ mysql-gis-quick ]
     strategy:
       matrix:
-        python: [ 3.7, 3.8, 3.9 ]
+        python: [ 3.8, 3.9 ]
         mysql: [ 5.7, 8.0 ]
     runs-on: ubuntu-latest
     name: mysql-${{ matrix.python }}-${{ matrix.mysql }}-gis
@@ -216,10 +215,10 @@ jobs:
 
   mariadb-full:
     if: contains(github.event.pull_request.labels.*.name, 'Full-MariaDB') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
-    needs: [ sqlite ]
+    needs: [ mariadb-quick ]
     strategy:
       matrix:
-        python: [ 3.7, 3.8, 3.9 ]
+        python: [ 3.8, 3.9 ]
         mariadb: [ 10.2, 10.3, 10.4, 10.5 ]
     runs-on: ubuntu-latest
     name: mariadb-${{ matrix.python }}-${{ matrix.mariadb }}
@@ -265,7 +264,7 @@ jobs:
     strategy:
       matrix:
         os: [ windows-latest, macos-latest ]
-        python: [ 3.7, 3.8, 3.9 ]
+        python: [ 3.8, 3.9 ]
     name: sqlite-${{ matrix.python }}-${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
