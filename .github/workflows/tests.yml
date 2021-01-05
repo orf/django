@@ -3,7 +3,7 @@ on:
 
 name: Tests
 
-# contains(github.event.issue.labels.*.name, 'bug')
+# contains(github.event.pull_request.labels.*.name, 'bug')
 jobs:
   # Quick CI steps
 
@@ -58,7 +58,7 @@ jobs:
           docker_token: ${{ secrets.DOCKER_TOKEN }}
 
   postgres-full:
-    if: contains(github.event.issue.labels.*.name, 'Full-Postgres') || contains(github.event.issue.labels.*.name, 'Full-Build')
+    if: contains(github.event.pull_request.labels.*.name, 'Full-Postgres') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
     needs: [ sqlite ]
     strategy:
       matrix:
@@ -98,7 +98,7 @@ jobs:
           docker_token: ${{ secrets.DOCKER_TOKEN }}
 
   postgres-gis-full:
-    if: contains(github.event.issue.labels.*.name, 'Full-Postgres') || contains(github.event.issue.labels.*.name, 'Full-Build')
+    if: contains(github.event.pull_request.labels.*.name, 'Full-Postgres') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
     needs: [ sqlite ]
     strategy:
       matrix:
@@ -139,7 +139,7 @@ jobs:
 
 
   mysql-full:
-    if: contains(github.event.issue.labels.*.name, 'Full-MySQL') || contains(github.event.issue.labels.*.name, 'Full-Build')
+    if: contains(github.event.pull_request.labels.*.name, 'Full-MySQL') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
     needs: [ sqlite ]
     strategy:
       matrix:
@@ -177,7 +177,7 @@ jobs:
           docker_token: ${{ secrets.DOCKER_TOKEN }}
 
   mysql-gis-full:
-    if: contains(github.event.issue.labels.*.name, 'Full-MySQL') || contains(github.event.issue.labels.*.name, 'Full-Build')
+    if: contains(github.event.pull_request.labels.*.name, 'Full-MySQL') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
     needs: [ sqlite ]
     strategy:
       matrix:
@@ -215,7 +215,7 @@ jobs:
           docker_token: ${{ secrets.DOCKER_TOKEN }}
 
   mariadb-full:
-    if: contains(github.event.issue.labels.*.name, 'Full-MariaDB') || contains(github.event.issue.labels.*.name, 'Full-Build')
+    if: contains(github.event.pull_request.labels.*.name, 'Full-MariaDB') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
     needs: [ sqlite ]
     strategy:
       matrix:
@@ -260,7 +260,7 @@ jobs:
           PYTHONUNBUFFERED: "1"
 
   non-docker-test-full:
-    if: contains(github.event.issue.labels.*.name, 'Full-WindowsAndMac') || contains(github.event.issue.labels.*.name, 'Full-Build')
+    if: contains(github.event.pull_request.labels.*.name, 'Full-WindowsAndMac') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
