@@ -137,6 +137,7 @@ jobs:
           mysql: ${{matrix.mysql}}
           docker_token: ${{ secrets.DOCKER_TOKEN }}
 
+
   mysql-full:
     if: contains(github.event.issue.labels.*.name, 'Full-MySQL') || contains(github.event.issue.labels.*.name, 'Full-Build')
     needs: [ sqlite ]
