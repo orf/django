@@ -34,15 +34,17 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: |
-        docker-compose pull -q --include-deps ${{ inputs.app }} || true
-        docker-compose build --pull ${{ inputs.app }}
-        docker-compose run --user=root ${{ inputs.app }} ${{ inputs.test_name }}
-        [[ ! -z "${{ inputs.DOCKER_TOKEN }}" ]] && (echo "${{ inputs.DOCKER_TOKEN }}" | docker login -u "tomforbes" --password-stdin && docker-compose push ${{ inputs.app }})
+    - run: exit
       shell: bash
-      env:
-        PYTHON_VERSION: ${{ inputs.python }}
-        POSTGRES_VERSION: ${{ inputs.postgres }}
-        POSTGIS_VERSION: ${{ inputs.postgis }}
-        MYSQL_VERSION: ${{ inputs.mysql }}
-        MARIADB_VERSION: ${{ inputs.mariadb }}
+#    - run: |
+#        docker-compose pull -q --include-deps ${{ inputs.app }} || true
+#        docker-compose build --pull ${{ inputs.app }}
+#        docker-compose run --user=root ${{ inputs.app }} ${{ inputs.test_name }}
+#        [[ ! -z "${{ inputs.DOCKER_TOKEN }}" ]] && (echo "${{ inputs.DOCKER_TOKEN }}" | docker login -u "tomforbes" --password-stdin && docker-compose push ${{ inputs.app }})
+#      shell: bash
+#      env:
+#        PYTHON_VERSION: ${{ inputs.python }}
+#        POSTGRES_VERSION: ${{ inputs.postgres }}
+#        POSTGIS_VERSION: ${{ inputs.postgis }}
+#        MYSQL_VERSION: ${{ inputs.mysql }}
+#        MARIADB_VERSION: ${{ inputs.mariadb }}
