@@ -58,7 +58,7 @@ jobs:
 
   postgres-full:
     if: contains(github.event.pull_request.labels.*.name, 'Full-Postgres') || contains(github.event.pull_request.labels.*.name, 'Full-Build')
-    needs: [ sqlite ]
+    needs: [ postgres-quick ]
     strategy:
       matrix:
         python: [ 3.8, 3.9 ]
