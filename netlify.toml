@@ -1,0 +1,7 @@
+[build]
+publish = "_build/html/"
+command = "make html"
+base    = "docs/"
+
+[context.deploy-preview.environment]
+PYTHON_VERSION = "3.7"

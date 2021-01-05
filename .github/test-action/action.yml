@@ -1,0 +1,50 @@
+name: 'Run Django tests'
+description: 'Run Django tests'
+inputs:
+  app:
+    description: 'The name of the docker-compose app to run'
+    required: true
+  python:
+    description: 'The Python version'
+    required: true
+
+  postgres:
+    description: Postgres version
+    required: false
+
+  postgis:
+    description: Postgis version
+    required: false
+
+  mysql:
+    description: MySQL version
+    required: false
+
+  mariadb:
+    description: MariaDB version
+    required: false
+
+  test_name:
+    description: 'The name of the tests to run'
+    required: false
+
+  docker_token:
+    description: 'Docker push token'
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - run: exit
+      shell: bash
+#    - run: |
+#        docker-compose pull -q --include-deps ${{ inputs.app }} || true
+#        docker-compose build --pull ${{ inputs.app }}
+#        docker-compose run --user=root ${{ inputs.app }} ${{ inputs.test_name }}
+#        [[ ! -z "${{ inputs.DOCKER_TOKEN }}" ]] && (echo "${{ inputs.DOCKER_TOKEN }}" | docker login -u "tomforbes" --password-stdin && docker-compose push ${{ inputs.app }})
+#      shell: bash
+#      env:
+#        PYTHON_VERSION: ${{ inputs.python }}
+#        POSTGRES_VERSION: ${{ inputs.postgres }}
+#        POSTGIS_VERSION: ${{ inputs.postgis }}
+#        MYSQL_VERSION: ${{ inputs.mysql }}
+#        MARIADB_VERSION: ${{ inputs.mariadb }}
