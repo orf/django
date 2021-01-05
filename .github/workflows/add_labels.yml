@@ -1,8 +1,7 @@
 name: Add Label
 
 on:
-  issues:
-    types: opened
+  issue_comment:
 
 jobs:
   add_label:
