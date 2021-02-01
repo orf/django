@@ -1,0 +1,17 @@
+name: Cancel redundant builds
+
+on:
+  pull_request_target:
+
+jobs:
+  cancel-runs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJSON(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - uses: styfle/cancel-workflow-action@0.7.0
+        with:
+          workflow_id: 'tests.yml'
+          access_token: ${{ github.token }}
