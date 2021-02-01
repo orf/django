@@ -3,6 +3,7 @@ name: Cancel redundant builds
 on:
   pull_request_target:
 
+
 jobs:
   cancel-runs:
     runs-on: ubuntu-latest
