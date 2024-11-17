@@ -220,9 +220,11 @@ class BaseTable:
         base_sql = compiler.quote_name_unless_alias(self.table_name)
         return base_sql + alias_str, []
 
-    def relabeled_clone(self, change_map):
+    def relabeled_clone(self, change_map, **kwargs):
         return self.__class__(
-            self.table_name, change_map.get(self.table_alias, self.table_alias)
+            self.table_name,
+            change_map.get(self.table_alias, self.table_alias),
+            **kwargs,
         )
 
     @property
@@ -236,3 +238,20 @@ class BaseTable:
 
     def __hash__(self):
         return hash(self.identity)
+
+
+class ValuesTable(BaseTable):
+    def __init__(self, table_name, alias, values):
+        super().__init__(table_name, alias)
+        self.values = values
+
+    def as_sql(self, compiler, connection):
+        alias_str = (
+            "" if self.table_alias == self.table_name else (" %s" % self.table_alias)
+        )
+        # table_alias = compiler.quote_name_unless_alias(self.base_table.table_name)
+        values_sql, values_params = compiler.compile(self.values)
+        return values_sql + alias_str, values_params
+
+    def relabeled_clone(self, change_map, **kwargs):
+        return super().relabeled_clone(change_map, values=self.values)

@@ -23,10 +23,11 @@ from django.db import (
 from django.db.models import AutoField, DateField, DateTimeField, Field, sql
 from django.db.models.constants import LOOKUP_SEP, OnConflict
 from django.db.models.deletion import Collector
-from django.db.models.expressions import Case, F, Value, When
+from django.db.models.expressions import Case, F, Ref, Value, Values, ValueTuple, When
 from django.db.models.functions import Cast, Trunc
 from django.db.models.query_utils import FilteredRelation, Q
 from django.db.models.sql.constants import CURSOR, GET_ITERATOR_CHUNK_SIZE
+from django.db.models.sql.datastructures import ValuesTable
 from django.db.models.utils import (
     AltersData,
     create_namedtuple_class,
@@ -1358,6 +1359,22 @@ class QuerySet(AltersData):
         fields += tuple(expressions)
         clone = self._values(*fields, **expressions)
         clone._iterable_class = ValuesIterable
+        return clone
+
+    def select_literal(self, values):
+        clone = self._clone()
+        base_table = clone.query.alias_map[self.query.base_table]
+
+        values = Values(*(ValueTuple(*v) for v in values), alias=self.query.base_table)
+
+        clone.query.alias_map[self.query.base_table] = ValuesTable(
+            base_table.table_name, base_table.table_alias, values
+        )
+
+        clone.query.select = (
+            Ref("column1", clone.query.select[0]),
+            Ref("column2", clone.query.select[0]),
+        )
         return clone
 
     def values_list(self, *fields, flat=False, named=False):

@@ -2,6 +2,7 @@ import datetime
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import F
+from django.db.models.expressions import Subquery, Value
 from django.db.models.functions import Lower
 from django.db.utils import IntegrityError
 from django.test import TestCase, override_settings, skipUnlessDBFeature
@@ -30,6 +31,27 @@ from .models import (
 class WriteToOtherRouter:
     def db_for_write(self, model, **hints):
         return "other"
+
+
+class ValuesBulkUpdate(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.notes = [Note.objects.create(note=str(i), misc=str(i)) for i in range(10)]
+
+    def test_simple(self):
+        # raise RuntimeError(Note.objects.values("note", "misc").query)
+
+        x = Note.objects.values("pk", "note").select_literal(
+            [
+                (1, Value("test")),
+                (2, Value("test2")),
+            ]
+        )
+        self.assertEqual(
+            list(x), [{"pk": 1, "note": "test"}, {"pk": 2, "note": "test2"}]
+        )
+
+        Note.objects.update(misc=Subquery(x))
 
 
 class BulkUpdateNoteTests(TestCase):

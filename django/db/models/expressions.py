@@ -1208,6 +1208,58 @@ class Value(SQLiteNumericMixin, Expression):
         return self.value
 
 
+@deconstructible(path="django.db.models.ValueTuple")
+class ValueTuple(Expression):
+    template = "(%(expressions)s)"
+    arg_joiner = ", "
+
+    def __init__(self, *expressions, output_field=None):
+        if output_field is None:
+            output_field = fields.Field()
+        super().__init__(output_field=output_field)
+        self.expressions = self._parse_expressions(*expressions)
+
+    def as_sql(self, compiler, connection):
+        sql_parts = []
+        params = []
+        for arg in self.expressions:
+            arg_sql, arg_params = compiler.compile(arg)
+            sql_parts.append(arg_sql)
+            params.extend(arg_params)
+        data = {}
+        template = self.template
+        arg_joiner = self.arg_joiner
+        data["expressions"] = data["field"] = arg_joiner.join(sql_parts)
+        return template % data, params
+
+
+@deconstructible(path="django.db.models.Values")
+class Values(Expression):
+    """Represent series of values"""
+
+    template = "(VALUES %(expressions)s)"
+    arg_joiner = ", "
+
+    def __init__(self, *expressions, output_field=None, alias=None):
+        if output_field is None:
+            output_field = fields.Field()
+        super().__init__(output_field=output_field)
+        self.values_expressions = self._parse_expressions(*expressions)
+
+    def as_sql(self, compiler, connection):
+        sql_parts = []
+        params = []
+        for arg in self.values_expressions:
+            arg_sql, arg_params = compiler.compile(arg)
+            sql_parts.append(arg_sql)
+            params.extend(arg_params)
+        data = {"alias": ""}
+        template = self.template
+        arg_joiner = self.arg_joiner
+        data["expressions"] = data["field"] = arg_joiner.join(sql_parts)
+        return template % data, params
+
+
 class RawSQL(Expression):
     allowed_default = True
 

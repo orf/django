@@ -6,7 +6,12 @@ from django.core.exceptions import FieldError
 from django.db.models.sql.constants import CURSOR, GET_ITERATOR_CHUNK_SIZE, NO_RESULTS
 from django.db.models.sql.query import Query
 
-__all__ = ["DeleteQuery", "UpdateQuery", "InsertQuery", "AggregateQuery"]
+__all__ = [
+    "DeleteQuery",
+    "UpdateQuery",
+    "InsertQuery",
+    "AggregateQuery",
+]
 
 
 class DeleteQuery(Query):
