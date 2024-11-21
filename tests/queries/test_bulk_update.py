@@ -32,6 +32,32 @@ class WriteToOtherRouter:
         return "other"
 
 
+class BulkUpdateDev(TestCase):
+    def test_speed(self):
+        import time, os, pathlib, json
+
+        bench_cols = int(os.environ["BENCH_NUM_COLUMNS"])
+        bench_dir = pathlib.Path(os.environ["BENCH_DIR"])
+        max_row_count = 10000
+
+        def make_note(idx):
+            kwargs = {}
+            for i in range(bench_cols):
+                kwargs[f'field_{i}'] = i * max_row_count * 10 + idx
+
+            return Note(**kwargs)
+
+        for bench_rows in range(0, max_row_count, 500):
+            notes = [make_note(i) for i in range(bench_rows)]
+            t1 = time.perf_counter()
+            Note.objects.bulk_create(notes)
+            t2 = time.perf_counter()
+            print(bench_rows, str(t2 - t1))
+            path = bench_dir / f"rows={bench_rows}/cols={bench_cols}/result.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"time": t2 - t1}))
+
+
 class BulkUpdateNoteTests(TestCase):
     @classmethod
     def setUpTestData(cls):
