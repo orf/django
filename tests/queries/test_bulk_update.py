@@ -1,6 +1,7 @@
 import datetime
 
 from django.core.exceptions import FieldDoesNotExist
+from django.db import transaction
 from django.db.models import F
 from django.db.models.functions import Lower
 from django.db.utils import IntegrityError
@@ -30,6 +31,53 @@ from .models import (
 class WriteToOtherRouter:
     def db_for_write(self, model, **hints):
         return "other"
+
+
+class BulkUpdateDev(TestCase):
+    def test_speed(self):
+        import json
+        import os
+        import pathlib
+        import time
+
+        bench_cols = int(os.environ["BENCH_NUM_COLUMNS"])
+        bench_dir = pathlib.Path(os.environ["BENCH_DIR"])
+        max_row_count = int(os.environ["BENCH_MAX_ROW_COUNT"])
+        max_row_increment = max_row_count // 10
+
+        def update_note(idx, note):
+            for i in range(bench_cols):
+                setattr(note, f"field_{i}", i * max_row_count * 10 + idx)
+
+        def make_note(idx):
+            kwargs = {}
+            for i in range(bench_cols):
+                kwargs[f"field_{i}"] = idx
+
+            return Note(**kwargs)
+
+        if bench_cols == 0:
+            return
+
+        Note.objects.all().delete()
+
+        for bench_rows in range(0, max_row_count + 1, max_row_increment):
+            with transaction.atomic():
+                Note.objects.bulk_create([make_note(i) for i in range(bench_rows)])
+                notes = list(Note.objects.all())
+                for idx, note in enumerate(notes):
+                    update_note(idx, note)
+
+                t1 = time.perf_counter()
+                Note.objects.bulk_update(
+                    notes, [f"field_{i}" for i in range(bench_cols)]
+                )
+                t2 = time.perf_counter()
+                Note.objects.all().delete()
+            print(bench_rows, str(t2 - t1))
+            path = bench_dir / f"rows={bench_rows}/cols={bench_cols}/result.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"time": t2 - t1}))
 
 
 class BulkUpdateNoteTests(TestCase):
