@@ -3,6 +3,7 @@ Various complex queries that have been problematic in the past.
 """
 
 import datetime
+import os
 
 from django.db import models
 from django.db.models.functions import Now
@@ -45,16 +46,10 @@ class Tag(models.Model):
 
 
 class Note(models.Model):
-    note = models.CharField(max_length=100)
-    misc = models.CharField(max_length=25)
-    tag = models.ForeignKey(Tag, models.SET_NULL, blank=True, null=True)
     negate = models.BooleanField(default=True)
 
-    class Meta:
-        ordering = ["note"]
-
-    def __str__(self):
-        return self.note
+    for i in range(int(os.environ["BENCH_NUM_COLUMNS"])):
+        locals()[f"field_{i}"] = models.IntegerField()
 
 
 class Annotation(models.Model):

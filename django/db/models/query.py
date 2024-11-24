@@ -924,6 +924,7 @@ class QuerySet(AltersData):
         with transaction.atomic(using=self.db, savepoint=False):
             for row_tuples in updates:
                 if has_field_references or has_related_fields:
+                    raise RuntimeError()
                     rows_updated += self._bulk_update_slow(
                         row_tuples, requires_casting=requires_casting
                     )
